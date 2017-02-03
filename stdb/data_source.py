@@ -29,7 +29,7 @@ class LocalDataSource(object):
             #cur_data = get_ts_current_data(order_book_id)
             raise NotImplementedError()
 
-        if cur_data[0] != history_data[0][0]:
+        if cur_data is not None and cur_data[0] != history_data[0][0]:
             history_data.insert(0,cur_data)
         stocktype = np.dtype([
             ('date', 'uint64'), ('open', 'float64'),
@@ -55,7 +55,8 @@ class LocalDataSource(object):
         #rice_col[:-1] = bars["close"][1:]
         #rice_col[:] = (rice_col - bars["close"]) / bars["close"]
         #rice_col[-1] = 0
-        rice_col[-1] = (bars["close"][-1]-bars["close"][-2]) * self.RISE_SCALE / bars["close"][-2] * 100
+        if len(bars["close"]) >= 2:
+            rice_col[-1] = (bars["close"][-1]-bars["close"][-2]) * self.RISE_SCALE / bars["close"][-2] * 100
         rice_col[:] = 1 / (self.RISE_SCALE*100) * rice_col
 
         #rf_col = bars["rf"]

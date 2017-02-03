@@ -55,7 +55,7 @@ def get_history_data(code):
         stocks = []
         for i in range(1,len(table)-1):
             if table[i].find('None') != -1:
-                break
+                continue
             line = table[i].split(',')
             if string.atoi(line[10]) == 0:
                 continue
@@ -87,7 +87,7 @@ def get_current_data(code):
         response = urllib2.urlopen(url)
         html = response.read().decode('latin1').encode('UTF8')
         line = html.split(',')
-        if len(line) < 2 :
+        if len(line) < 2 or line[8] == '0':
             return None
         data = (
             date2int(line[30]),#date

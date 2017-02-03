@@ -50,7 +50,7 @@ def get_history_data(code):
 
     try:
         response = urllib2.urlopen(url)
-        html = response.read().decode('GB2312').encode('UTF8')
+        html = response.read().decode('latin1').encode('UTF8')
         table = html.split('\r\n')
         stocks = []
         for i in range(1,len(table)-1):
@@ -85,7 +85,7 @@ def get_current_data(code):
     url='http://hq.sinajs.cn/list=' + code
     try:
         response = urllib2.urlopen(url)
-        html = response.read().decode('GB2312').encode('UTF8')
+        html = response.read().decode('latin1').encode('UTF8')
         line = html.split(',')
         if len(line) < 2 :
             return None

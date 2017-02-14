@@ -3,6 +3,7 @@ import string
 import datetime,time
 import numpy as np
 import urllib2
+import socket
 import json
 
 import tushare as ts
@@ -73,6 +74,9 @@ def get_history_data(code):
         return stocks
     except urllib2.HTTPError,e:
         print e.code
+        return None
+    except socket.error, e:
+        print e.message
         return None
 
 

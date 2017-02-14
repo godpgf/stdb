@@ -104,6 +104,8 @@ class LocalDataProxy(DataProxy):
                 bars = np.fromfile(path,stocktype)
             else:
                 bars = self._data_source.get_all_bars(order_book_id)
+                if bars is None:
+                    return None
                 if self._cache_path:
                     if os.path.exists(self._cache_path) is False:
                         os.makedirs(self._cache_path)

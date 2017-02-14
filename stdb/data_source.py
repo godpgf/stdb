@@ -29,6 +29,9 @@ class LocalDataSource(object):
             #cur_data = get_ts_current_data(order_book_id)
             raise NotImplementedError()
 
+        if history_data is None or len(history_data) == 0:
+            return None
+
         if cur_data is not None and cur_data[0] != history_data[0][0]:
             history_data.insert(0,cur_data)
         stocktype = np.dtype([

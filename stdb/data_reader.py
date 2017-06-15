@@ -78,6 +78,9 @@ def get_history_data(code):
     except socket.error, e:
         print e.message
         return None
+    except urllib2.URLError, e:
+        print e.message
+        return None
 
 
 #返回某只股票的当前数据

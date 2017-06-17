@@ -147,7 +147,7 @@ class LocalDataProxy(DataProxy):
         dt = convert_date_to_int(dt)
 
         i = bars["date"].searchsorted(dt)
-        if bars["date"][i] != dt:
+        if i == len(bars["date"]) or bars["date"][i] != dt:
             i -= 1
         left = i - bar_count + 1 if i >= bar_count else 0
         bars = bars[left:i + 1]

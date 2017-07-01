@@ -78,18 +78,20 @@ class LocalDataProxy(DataProxy):
         self._cache = {}
         self._data_source = LocalDataSource()
         self.trading_calender_int = None
-        self._data_source.init_trading_dates(self.get_all_Data('0000001')['date'])
+        market_data = self.get_all_Data('0000001')
+        market_data = market_data[np.where(market_data['volume'] > 0)]
+        self._data_source.init_trading_dates(market_data['date'])
         self.trading_calendar = self.get_trading_dates("2005-01-01", datetime.date.today())
         trading_calender_int = np.array(
             [int(t.strftime("%Y%m%d000000")) for t in self.trading_calendar], dtype="<u8")
         self.trading_calender_int = trading_calender_int[
             trading_calender_int <= convert_date_to_int(datetime.date.today())]
 
+
     def get_all_Data(self, order_book_id):
         try:
             bars = self._cache[order_book_id]
         except KeyError:
-            bars = None
             if self._is_offline :
                 path = '%s/%s.bin'%(self._cache_path,order_book_id)
                 if os.path.exists(path) is False:
@@ -110,7 +112,8 @@ class LocalDataProxy(DataProxy):
                     if os.path.exists(self._cache_path) is False:
                         os.makedirs(self._cache_path)
                     bars.tofile('%s/%s.bin'%(self._cache_path,order_book_id))
-            #bars = self._fill_all_bars(bars)
+
+            bars = self._fill_all_bars(bars)
             self._cache[order_book_id] = bars
 
         return bars
@@ -183,26 +186,46 @@ class LocalDataProxy(DataProxy):
         return self._data_source.get_trading_dates(start_date, end_date)
 
     def _fill_all_bars(self, bars):
-        if self.trading_calender_int == None:
+        if self.trading_calender_int is None:
             return bars
         trading_calender_int = self.trading_calender_int
 
         # prepend
-        prepend_date = trading_calender_int[:trading_calender_int.searchsorted(bars[0]["date"])]
+        start_index = trading_calender_int.searchsorted(bars[0]["date"])
+        prepend_date = trading_calender_int[:start_index]
         prepend_bars = np.zeros(len(prepend_date), dtype=bars.dtype)
         dates = prepend_bars["date"]
         dates[:] = prepend_date
+        prepend_bars["open"].fill(bars[0]["open"])
+        prepend_bars["close"].fill(bars[0]["open"])
+        prepend_bars["high"].fill(bars[0]["open"])
+        prepend_bars["low"].fill(bars[0]["open"])
+        prepend_bars["vwap"].fill(bars[0]["vwap"])
+
+        # midpend
+        last_index = trading_calender_int.searchsorted(bars[-1]["date"])
+        midpend_date = trading_calender_int[start_index: last_index + 1]
+        midpend_bars = np.zeros(len(midpend_date), dtype=bars.dtype)
+        bars_index = bars["date"].searchsorted(midpend_date[0])
+        for i in xrange(len(midpend_bars)):
+            if bars[bars_index]["date"] == midpend_date[i]:
+                midpend_bars[i] = bars[bars_index]
+                bars_index += 1
+            else:
+                data = (midpend_date[i], bars[bars_index - 1]["close"], bars[bars_index - 1]["close"], bars[bars_index - 1]["close"], bars[bars_index - 1]["close"], 0, bars[bars_index - 1]["vwap"], 0)
+                midpend_bars[i] = data
 
         # append
-        append_date = trading_calender_int[trading_calender_int.searchsorted(bars[-1]["date"]) + 1:]
+        append_date = trading_calender_int[last_index + 1:]
         append_bars = np.zeros(len(append_date), dtype=bars.dtype)
         dates = append_bars["date"]
         dates[:] = append_date
-
-        for key in ["open", "high", "low", "close"]:
-            col = append_bars[key]
-            col[:] = bars[-1][key]  # fill with bars's last bar
+        append_bars["open"].fill(bars[-1]["close"])
+        append_bars["close"].fill(bars[-1]["close"])
+        append_bars["high"].fill(bars[-1]["close"])
+        append_bars["low"].fill(bars[-1]["close"])
+        append_bars["vwap"].fill(bars[-1]["vwap"])
 
         # fill bars
-        new_bars = np.concatenate([prepend_bars, bars, append_bars])
+        new_bars = np.concatenate([prepend_bars, midpend_bars, append_bars])
         return new_bars

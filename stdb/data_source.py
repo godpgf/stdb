@@ -33,6 +33,7 @@ class LocalDataSource(object):
             return None
 
         if cur_data is not None and cur_data[0] != history_data[0][0]:
+            cur_data[7] = (cur_data[4] - history_data[-1][4]) * 100.0 / history_data[-1][4] * 10000
             history_data.insert(0,cur_data)
         stocktype = np.dtype([
             ('date', 'uint64'), ('open', 'float64'),

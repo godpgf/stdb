@@ -28,7 +28,7 @@ class LocalCodeProxy(CodeProxy):
 
     def get_codes(self):
         if self._cache is None:
-            code_type = np.dtype([('code', '|S7'), ('price', 'float64')])
+            code_type = np.dtype([('code', '|S7'), ('price', 'float64'), ('cup', 'float64')])
             if self._is_offline:
                 path = '%s/%s.bin'%(self._cache_path,'codes')
                 if os.path.exists(path) is False:

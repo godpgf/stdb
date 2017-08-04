@@ -78,6 +78,7 @@ class FundamentalProxy(with_metaclass(abc.ABCMeta)):
         :rtype: Instrument
 
         """
+        ts.get_industry_classified()
         raise NotImplementedError
 
     @abc.abstractmethod

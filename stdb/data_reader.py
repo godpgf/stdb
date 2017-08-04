@@ -11,14 +11,14 @@ import tushare as ts
 
 #返回所有股票码，0开头是上证，1开头是深证
 def get_all_stock_code():
-    url = "http://quotes.money.163.com/hs/service/diyrank.php?page=0&count=3000&sort=PERCENT&order=desc&query=STYPE:EQA&fields=CODE,PRICE"
+    url = "http://quotes.money.163.com/hs/service/diyrank.php?page=0&count=3000&sort=PERCENT&order=desc&query=STYPE:EQA&fields=CODE,PRICE,TCAP"
     try:
         response = urllib2.urlopen(url)
         html = response.read().decode('GB2312')
         data = json.loads(html)["list"]
         codes = []
         for d in data :
-            codes.append((d["CODE"].encode('UTF8'),d["PRICE"]))
+            codes.append((d["CODE"].encode('UTF8'),d["PRICE"],d["TCAP"]))
         return codes
     except urllib2.HTTPError,e:
         print e.code
@@ -104,7 +104,7 @@ def get_current_data(code):
             int(string.atof(line[3])*1000),#close
             string.atoi(line[8]),#volume
             int(string.atof(line[9])/string.atoi(line[8])*1000),#vwap
-            0,#rise
+            int((string.atof(line[3]) - string.atof(line[2]))/string.atof(line[2])*100 * 10000),#rise
         )
         return data
     except urllib2.HTTPError,e:
@@ -148,6 +148,19 @@ def get_ts_current_data(code):
 def get_ts_base_info():
     return ts.get_stock_basics()
 
+def get_ts_concept():
+    concept = ts.get_concept_classified()
+    concept_dict = {}
+    for index, row in concept.iterrows():
+        concept_dict[row['code']] = row['c_name']
+    return concept_dict
+
+def get_ts_industry():
+    industry = ts.get_industry_classified()
+    industry_dict = {}
+    for index, row in industry.iterrows():
+        industry_dict[row['code']] = row['c_name']
+    return industry_dict
 
 def get_ts_report_info(year, quarter):
     return ts.get_report_data(year, quarter)

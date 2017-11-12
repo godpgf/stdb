@@ -38,7 +38,7 @@ class LocalDataSource(object):
             ('date', 'uint64'), ('open', 'float64'),
             ('high', 'float64'), ('low', 'float64'),
             ('close', 'float64'), ('volume', 'float64'),
-            ('vwap', 'float64'), ('rise', 'float64'),
+            ('vwap', 'float64'), ('returns', 'float64'),
             #('rf','float64')
         ])
         bars = np.array(history_data,dtype=stocktype)
@@ -54,19 +54,12 @@ class LocalDataSource(object):
         for key in ["open", "high", "low", "close", "vwap"]:
             col = bars[key]
             col[:] = np.round(1 / self.PRICE_SCALE * col, 2)
-        rice_col = bars["rise"]
-        #rice_col[:-1] = bars["close"][1:]
-        #rice_col[:] = (rice_col - bars["close"]) / bars["close"]
-        #rice_col[-1] = 0
-        if len(bars["close"]) >= 2:
-            rice_col[-1] = (bars["close"][-1]-bars["close"][-2]) * self.RISE_SCALE / bars["close"][-2] * 100
-        rice_col[:] = 1 / (self.RISE_SCALE*100) * rice_col
+        rise_col = bars['returns']
+        rise_col[:] = rise_col / (self.RISE_SCALE * 100.)
+        # if len(bars["close"]) >= 2:
+        #     rice_col[-1] = (bars["close"][-1]-bars["close"][-2]) * self.RISE_SCALE / bars["close"][-2] * 100
+        # rice_col[:] = 1 / (self.RISE_SCALE*100) * rice_col
 
-        #rf_col = bars["rf"]
-        #rf_col[0] = bars["close"][0]
-        #for i in range(1,len(rf_col)):
-        #    rf_col[i]= (rice_col[i] + 1) * rf_col[i-1]
-        #rf_col[:] = rf_col / bars["close"]
         return bars
 
     def get_dividends(self, order_book_id):

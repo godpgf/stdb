@@ -15,7 +15,7 @@ dataProxy.get_table('0000001')
 ```
 ####得到2016-5-5往前600个交易日的所有收盘数据
 ```python
-#close、open、low、high、volume、vwap、rise
+#close、open、low、high、volume、vwap、returns
 dataProxy.history('0000001',pd.Timestamp('2016-5-5'),600,'1d','close').values
 ```
 

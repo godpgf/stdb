@@ -4,3 +4,166 @@ from .data_accessor import LocalDataProxy
 from .code_accessor import LocalCodeProxy
 from .fundamental_accessor import LocalFundamentalProxy
 from .classified_accessor import LocalClassifiedProxy
+import numpy as np
+
+
+def cal_market_data(stock_list):
+    all_weight = 0
+    weight_list = []
+    for s in stock_list:
+        data = s.bar
+        cup = data[-1][4] * s.totals
+        all_weight += cup
+        weight_list.append(cup)
+    if all_weight > 0:
+        for i in xrange(len(weight_list)):
+            weight_list[i] /= all_weight
+
+    date = []
+    open = []
+    high = []
+    low = []
+    close = []
+    vwap = []
+    volume = []
+    returns = []
+
+    day_len = len(stock_list[0].bar)
+    yestoday_is_use = [False] * len(stock_list)
+    for i in xrange(day_len):
+        openPrice = 0
+        highPrice = 0
+        lowPrice = 0
+        closePrice = 0
+        volumeValue = 0
+        vwapPrice = 0
+        returnsValue = 0
+
+        #先计算今天的开盘
+        realOpenPrice = None
+        if i > 0:
+            #先用昨天有数据今天还有数据的股票计算出今天的开盘价
+            lastOpenPrice = 0
+            for j in xrange(len(stock_list)):
+                if yestoday_is_use[j] and stock_list[j].bar[i][5] > 0:
+                    lastOpenPrice += stock_list[j].bar[i-1][1] * weight_list[j]
+                    openPrice += stock_list[j].bar[i][1] * weight_list[j]
+
+            if lastOpenPrice != 0:
+                realOpenPrice = openPrice * open[i-1] / lastOpenPrice
+            else:
+                #当遇到计算不出的情况取个近似
+                realOpenPrice = close[i-1]
+            openPrice = 0
+
+
+        #计算为了得到这个开盘价所需要的缩放
+        for j in xrange(len(stock_list)):
+            yestoday_is_use[j] = False
+            if stock_list[j].bar[i][5] > 0:
+                openPrice += stock_list[j].bar[i][1] * weight_list[j]
+                highPrice += stock_list[j].bar[i][2] * weight_list[j]
+                lowPrice += stock_list[j].bar[i][3] * weight_list[j]
+                closePrice += stock_list[j].bar[i][4] * weight_list[j]
+                volumeValue += stock_list[j].bar[i][5] * weight_list[j]
+                vwapPrice += stock_list[j].bar[i][6] * weight_list[j]
+                returnsValue += stock_list[j].bar[i][7] * weight_list[j]
+                yestoday_is_use[j] = True
+
+        if realOpenPrice:
+            if volumeValue == 0:
+                openPrice = close[i-1]
+                highPrice = close[i-1]
+                lowPrice = close[i-1]
+                closePrice = close[i-1]
+                vwapPrice = 0
+                returnsValue = 0
+            else:
+                k = realOpenPrice / openPrice
+                openPrice *= k
+                highPrice *= k
+                lowPrice *= k
+                closePrice *= k
+                volumeValue *= k
+                vwapPrice *= k
+                returnsValue = (closePrice - close[i-1]) / close[i-1]
+
+        date.append( stock_list[0].bar[i][0] )
+        open.append( openPrice )
+        high.append( highPrice )
+        low.append( lowPrice )
+        close.append( closePrice )
+        volume.append( volumeValue )
+        vwap.append( vwapPrice )
+        returns.append( returnsValue )
+
+    stocktype = np.dtype([
+        ('date', 'uint64'), ('open', 'float64'),
+        ('high', 'float64'), ('low', 'float64'),
+        ('close', 'float64'), ('volume', 'float64'),
+        ('vwap', 'float64'), ('returns', 'float64'),
+        # ('rf','float64')
+    ])
+    history_data = [(date[i], open[i], high[i], low[i], close[i], volume[i], vwap[i],returns[i]) for i in xrange(len(date))]
+    return np.array(history_data, dtype=stocktype)
+
+
+class StockData(object):
+    def __init__(self, bar, market, industry, concept, totals):
+        self.bar = bar
+        self.market = market
+        self.industry = industry
+        self.concept = concept
+        self.totals = totals
+
+
+def cal_all_market_data(stock_dict, is_industry):
+    market_list_dict = {}
+    for key, value in stock_dict.items():
+        cl_type = value.industry if is_industry else value.concept
+        if cl_type not in market_list_dict:
+            market_list_dict[cl_type] = list()
+        market_list_dict[cl_type].append(value)
+
+    market_dict = {}
+    for key, value in market_list_dict.items():
+        market_dict[key] = StockData(cal_market_data(value), None, None, None, 0)
+    return market_dict
+
+
+def load_all_stock_flat(codeProxy, dataProxy, classifiedProxy):
+    codes = codeProxy.get_codes()
+
+    market_dict = {
+        # 数据、市场、分类、概念、发行量
+        "sh":StockData(dataProxy.get_all_Data('0000001'), None, None, None, 0),
+        "sz":StockData(dataProxy.get_all_Data('1399001'), None, None, None, 0),
+    }
+
+    stock_size = 0
+    stock_dict = {}
+    for code in codes:
+        data = dataProxy.get_all_Data(code[0])
+        if data is not None:
+            totals = int(code[2] / code[1])
+            industry = classifiedProxy.industry_info(code[0])
+            concept = classifiedProxy.concept_info(code[0])
+            if industry is None or len(industry) == 0:
+                industry = u'[其他行业]'
+            else:
+                industry = u'[%s]'%industry.encode('utf8')
+            if concept is None or len(concept) == 0:
+                concept = u'(其他概念)'
+            else:
+                concept = u'(%s)'%concept.encode('utf8')
+            if code[0][0] == '0':
+                market = 'sh'
+            else:
+                market = 'sz'
+
+            stock_dict[code[0]] = StockData(data, market, industry, concept, totals)
+            stock_size += 1
+
+    industry_dict = cal_all_market_data(stock_dict, True)
+    concept_dict = cal_all_market_data(stock_dict, False)
+    return stock_dict, market_dict, industry_dict, concept_dict

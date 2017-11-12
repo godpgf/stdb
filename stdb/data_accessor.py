@@ -10,6 +10,7 @@ import os
 
 from .data_source import LocalDataSource
 from .bar import *
+from .data_reader import date2int
 
 
 class DataProxy(with_metaclass(abc.ABCMeta)):
@@ -72,16 +73,17 @@ class LocalDataProxy(DataProxy):
     :param str cache_path:缓存地址
     :param is_offline:是否离线
     """
-    def __init__(self, cache_path=None, is_offline=False):
+    def __init__(self, cache_path=None, is_offline=False, min_date = "2005-01-01"):
         self._cache_path = cache_path
         self._is_offline = False if cache_path is None else is_offline
         self._cache = {}
         self._data_source = LocalDataSource()
         self.trading_calender_int = None
+        self.min_date = min_date
         market_data = self.get_all_Data('0000001')
         market_data = market_data[np.where(market_data['volume'] > 0)]
         self._data_source.init_trading_dates(market_data['date'])
-        self.trading_calendar = self.get_trading_dates("2005-01-01", datetime.date.today())
+        self.trading_calendar = self.get_trading_dates(min_date, datetime.date.today())
         trading_calender_int = np.array(
             [int(t.strftime("%Y%m%d000000")) for t in self.trading_calendar], dtype="<u8")
         self.trading_calender_int = trading_calender_int[
@@ -100,7 +102,7 @@ class LocalDataProxy(DataProxy):
                     ('date', 'uint64'), ('open', 'float64'),
                     ('high', 'float64'), ('low', 'float64'),
                     ('close', 'float64'), ('volume', 'float64'),
-                    ('vwap', 'float64'), ('rise', 'float64'),
+                    ('vwap', 'float64'), ('returns', 'float64'),
                     #('rf','float64')
                 ])
                 bars = np.fromfile(path,stocktype)
@@ -113,6 +115,8 @@ class LocalDataProxy(DataProxy):
                         os.makedirs(self._cache_path)
                     bars.tofile('%s/%s.bin'%(self._cache_path,order_book_id))
 
+            min_date_int = date2int(self.min_date)*1000000
+            bars = bars[np.where(bars['date'] > min_date_int)]
             bars = self._fill_all_bars(bars)
             self._cache[order_book_id] = bars
 
@@ -128,8 +132,8 @@ class LocalDataProxy(DataProxy):
             return '%s-%s-%s'%('%d'%year,_2str(month),_2str(day))
         date_col = bars["date"]
         index = [pd.Timestamp(int2date(data / 1000000)) for data in date_col]
-        data = [[bars["open"][i],bars["high"][i],bars["low"][i],bars["close"][i],bars["volume"][i],bars["vwap"][i],bars["rise"][i]] for i in range(len(index))]
-        return pd.DataFrame(np.array(data),index,columns=["Open","High","Low","Close","Volume","Vwap","Rise"])
+        data = [[bars["open"][i],bars["high"][i],bars["low"][i],bars["close"][i],bars["volume"][i],bars["vwap"][i],bars['returns'][i]] for i in range(len(index))]
+        return pd.DataFrame(np.array(data),index,columns=["Open","High","Low","Close","Volume","Vwap",'returns'])
 
 
     def get_bar(self, order_book_id, dt):

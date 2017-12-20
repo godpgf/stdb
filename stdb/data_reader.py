@@ -25,15 +25,15 @@ def get_all_stock_code():
         return None
 
 
-def date2int(date):
+def date2long(date):
     tmp = date.split('-')
-    return string.atoi(tmp[0]) * 10000 + string.atoi(tmp[1]) * 100 + string.atoi(tmp[2])
+    return string.atol(tmp[0]) * 10000 + string.atol(tmp[1]) * 100 + string.atol(tmp[2])
 
 
-def int2date(date):
-    year = int(date / 10000)
-    month = int((date - year * 10000) / 100)
-    day = int(date - year * 10000 - month * 100)
+def long2date(date):
+    year = long(date / 10000)
+    month = long((date - year * 10000) / 100)
+    day = long(date - year * 10000 - month * 100)
     return '%s%s%s'%('%d'%year,_2str(month),_2str(day))
 
 
@@ -61,14 +61,15 @@ def get_history_data(code):
             if string.atoi(line[10]) == 0:
                 continue
             data = (
-                date2int(line[0]),#date
-                int(string.atof(line[6])*1000),#open
-                int(string.atof(line[4])*1000),#high
-                int(string.atof(line[5])*1000),#low
-                int(string.atof(line[3])*1000),#close
-                string.atoi(line[10]),#volume
-                int(string.atof(line[11])/string.atoi(line[10])*1000),#vwap
-                int(string.atof(line[9])*10000),#rise
+                date2long(line[0]),#date
+                long(string.atof(line[6])*1000),#open
+                long(string.atof(line[4])*1000),#high
+                long(string.atof(line[5])*1000),#low
+                long(string.atof(line[3])*1000),#close
+                string.atol(line[10]),#volume
+                long(string.atof(line[11])/string.atol(line[10])*1000),#vwap
+                long(string.atof(line[9])*10000),#rise
+                string.atol(line[11]),#amount
             )
             stocks.append(data)
         return stocks
@@ -97,14 +98,15 @@ def get_current_data(code):
         if len(line) < 2 or line[8] == '0':
             return None
         data = (
-            date2int(line[30]),#date
-            int(string.atof(line[1])*1000),#open
-            int(string.atof(line[4])*1000),#high
-            int(string.atof(line[5])*1000),#low
-            int(string.atof(line[3])*1000),#close
-            string.atoi(line[8]),#volume
-            int(string.atof(line[9])/string.atoi(line[8])*1000),#vwap
-            int((string.atof(line[3]) - string.atof(line[2]))/string.atof(line[2])*100 * 10000),#rise
+            date2long(line[30]),#date
+            long(string.atof(line[1])*1000),#open
+            long(string.atof(line[4])*1000),#high
+            long(string.atof(line[5])*1000),#low
+            long(string.atof(line[3])*1000),#close
+            string.atol(line[8]),#volume
+            long(string.atof(line[9])/string.atol(line[8])*1000),#vwap
+            long((string.atof(line[3]) - string.atof(line[2]))/string.atof(line[2])*100 * 10000),#rise
+            string.atol(line[9]),#amount
         )
         return data
     except urllib2.HTTPError,e:

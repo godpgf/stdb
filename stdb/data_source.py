@@ -4,13 +4,14 @@ import pandas as pd
 import six
 from data_reader import *
 
+
 class LocalDataSource(object):
     PRICE_SCALE = 1000.
     RISE_SCALE = 10000.
 
     def init_trading_dates(self,date):
         date_col = date[:] / 1000000
-        self._trading_dates = pd.Index(pd.Timestamp(int2date(d)) for d in date_col)
+        self._trading_dates = pd.Index(pd.Timestamp(long2date(d)) for d in date_col)
 
     def get_trading_dates(self, start_date, end_date):
         left = self._trading_dates.searchsorted(start_date)
@@ -39,7 +40,7 @@ class LocalDataSource(object):
             ('high', 'float64'), ('low', 'float64'),
             ('close', 'float64'), ('volume', 'float64'),
             ('vwap', 'float64'), ('returns', 'float64'),
-            #('rf','float64')
+            ('amount','uint64')
         ])
         bars = np.array(history_data,dtype=stocktype)
         bars = bars[::-1]#转向

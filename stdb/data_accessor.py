@@ -10,7 +10,7 @@ import os
 
 from .data_source import LocalDataSource
 from .bar import *
-from .data_reader import date2int
+from .data_reader import date2long
 
 
 class DataProxy(with_metaclass(abc.ABCMeta)):
@@ -103,7 +103,7 @@ class LocalDataProxy(DataProxy):
                     ('high', 'float64'), ('low', 'float64'),
                     ('close', 'float64'), ('volume', 'float64'),
                     ('vwap', 'float64'), ('returns', 'float64'),
-                    #('rf','float64')
+                    ('amount','uint64')
                 ])
                 bars = np.fromfile(path,stocktype)
             else:
@@ -115,7 +115,7 @@ class LocalDataProxy(DataProxy):
                         os.makedirs(self._cache_path)
                     bars.tofile('%s/%s.bin'%(self._cache_path,order_book_id))
 
-            min_date_int = date2int(self.min_date)*1000000
+            min_date_int = date2long(self.min_date)*1000000
             bars = bars[np.where(bars['date'] > min_date_int)]
             bars = self._fill_all_bars(bars)
             self._cache[order_book_id] = bars
@@ -132,8 +132,8 @@ class LocalDataProxy(DataProxy):
             return '%s-%s-%s'%('%d'%year,_2str(month),_2str(day))
         date_col = bars["date"]
         index = [pd.Timestamp(int2date(data / 1000000)) for data in date_col]
-        data = [[bars["open"][i],bars["high"][i],bars["low"][i],bars["close"][i],bars["volume"][i],bars["vwap"][i],bars['returns'][i]] for i in range(len(index))]
-        return pd.DataFrame(np.array(data),index,columns=["Open","High","Low","Close","Volume","Vwap",'returns'])
+        data = [[bars["open"][i],bars["high"][i],bars["low"][i],bars["close"][i],bars["volume"][i],bars["vwap"][i],bars['returns'][i],bars['amount'][i]] for i in range(len(index))]
+        return pd.DataFrame(np.array(data),index,columns=["Open","High","Low","Close","Volume","Vwap",'Returns','Amount'])
 
 
     def get_bar(self, order_book_id, dt):
@@ -216,7 +216,7 @@ class LocalDataProxy(DataProxy):
                 midpend_bars[i] = bars[bars_index]
                 bars_index += 1
             else:
-                data = (midpend_date[i], bars[bars_index - 1]["close"], bars[bars_index - 1]["close"], bars[bars_index - 1]["close"], bars[bars_index - 1]["close"], 0, bars[bars_index - 1]["vwap"], 0)
+                data = (midpend_date[i], bars[bars_index - 1]["close"], bars[bars_index - 1]["close"], bars[bars_index - 1]["close"], bars[bars_index - 1]["close"], 0, bars[bars_index - 1]["vwap"], 0, 0)
                 midpend_bars[i] = data
 
         # append

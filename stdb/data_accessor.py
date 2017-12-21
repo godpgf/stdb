@@ -103,7 +103,7 @@ class LocalDataProxy(DataProxy):
                     ('high', 'float64'), ('low', 'float64'),
                     ('close', 'float64'), ('volume', 'float64'),
                     ('vwap', 'float64'), ('returns', 'float64'),
-                    ('amount','uint64')
+                    ('amount','float64')
                 ])
                 bars = np.fromfile(path,stocktype)
             else:

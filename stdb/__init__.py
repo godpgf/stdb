@@ -27,6 +27,7 @@ def cal_market_data(stock_list):
     vwap = []
     volume = []
     returns = []
+    amount = []
 
     day_len = len(stock_list[0].bar)
     yestoday_is_use = [False] * len(stock_list)
@@ -38,6 +39,7 @@ def cal_market_data(stock_list):
         volumeValue = 0
         vwapPrice = 0
         returnsValue = 0
+        amountValue = 0
 
         #先计算今天的开盘
         realOpenPrice = None
@@ -68,6 +70,7 @@ def cal_market_data(stock_list):
                 volumeValue += stock_list[j].bar[i][5] * weight_list[j]
                 vwapPrice += stock_list[j].bar[i][6] * weight_list[j]
                 returnsValue += stock_list[j].bar[i][7] * weight_list[j]
+                amountValue += stock_list[j].bar[i][8] * weight_list[j]
                 yestoday_is_use[j] = True
 
         if realOpenPrice:
@@ -87,6 +90,7 @@ def cal_market_data(stock_list):
                 volumeValue *= k
                 vwapPrice *= k
                 returnsValue = (closePrice - close[i-1]) / close[i-1]
+                amountValue *= k
 
         date.append( stock_list[0].bar[i][0] )
         open.append( openPrice )
@@ -96,25 +100,27 @@ def cal_market_data(stock_list):
         volume.append( volumeValue )
         vwap.append( vwapPrice )
         returns.append( returnsValue )
+        amount.append(amountValue)
 
     stocktype = np.dtype([
         ('date', 'uint64'), ('open', 'float64'),
         ('high', 'float64'), ('low', 'float64'),
         ('close', 'float64'), ('volume', 'float64'),
         ('vwap', 'float64'), ('returns', 'float64'),
-        # ('rf','float64')
+        ('amount','float64')
     ])
-    history_data = [(date[i], open[i], high[i], low[i], close[i], volume[i], vwap[i],returns[i]) for i in xrange(len(date))]
+    history_data = [(date[i], open[i], high[i], low[i], close[i], volume[i], vwap[i],returns[i], amount[i]) for i in xrange(len(date))]
     return np.array(history_data, dtype=stocktype)
 
 
 class StockData(object):
-    def __init__(self, bar, market, industry, concept, totals):
+    def __init__(self, bar, market, industry, concept, totals, earning_ratios):
         self.bar = bar
         self.market = market
         self.industry = industry
         self.concept = concept
         self.totals = totals
+        self.earning_ratios = earning_ratios
 
 
 def cal_all_market_data(stock_dict, is_industry):
@@ -127,7 +133,7 @@ def cal_all_market_data(stock_dict, is_industry):
 
     market_dict = {}
     for key, value in market_list_dict.items():
-        market_dict[key] = StockData(cal_market_data(value), None, None, None, 0)
+        market_dict[key] = StockData(cal_market_data(value), None, None, None, 0, 0)
     return market_dict
 
 
@@ -136,8 +142,8 @@ def load_all_stock_flat(codeProxy, dataProxy, classifiedProxy):
 
     market_dict = {
         # 数据、市场、分类、概念、发行量
-        "sh":StockData(dataProxy.get_all_Data('0000001'), None, None, None, 0),
-        "sz":StockData(dataProxy.get_all_Data('1399001'), None, None, None, 0),
+        "sh":StockData(dataProxy.get_all_Data('0000001'), None, None, None, 0, 0),
+        "sz":StockData(dataProxy.get_all_Data('1399001'), None, None, None, 0, 0),
     }
 
     stock_size = 0
@@ -146,6 +152,7 @@ def load_all_stock_flat(codeProxy, dataProxy, classifiedProxy):
         data = dataProxy.get_all_Data(code[0])
         if data is not None:
             totals = int(code[2] / code[1])
+            earning_ratios = code[3] / code[1]
             industry = classifiedProxy.industry_info(code[0])
             concept = classifiedProxy.concept_info(code[0])
             if industry is None or len(industry) == 0:
@@ -161,7 +168,7 @@ def load_all_stock_flat(codeProxy, dataProxy, classifiedProxy):
             else:
                 market = 'sz'
 
-            stock_dict[code[0]] = StockData(data, market, industry, concept, totals)
+            stock_dict[code[0]] = StockData(data, market, industry, concept, totals, earning_ratios)
             stock_size += 1
 
     industry_dict = cal_all_market_data(stock_dict, True)

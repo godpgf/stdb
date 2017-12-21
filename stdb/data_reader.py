@@ -5,20 +5,23 @@ import numpy as np
 import urllib2
 import socket
 import json
+import re
 
 import tushare as ts
 
 
 #返回所有股票码，0开头是上证，1开头是深证
 def get_all_stock_code():
-    url = "http://quotes.money.163.com/hs/service/diyrank.php?page=0&count=3000&sort=PERCENT&order=desc&query=STYPE:EQA&fields=CODE,PRICE,TCAP"
+    url = "http://quotes.money.163.com/hs/service/diyrank.php?page=0&count=3000&sort=PERCENT&order=desc&query=STYPE:EQA&fields=CODE,PRICE,TCAP,MCAP,PE,TURNOVER"
     try:
         response = urllib2.urlopen(url)
         html = response.read().decode('GB2312')
         data = json.loads(html)["list"]
         codes = []
         for d in data :
-            codes.append((d["CODE"].encode('UTF8'),d["PRICE"],d["TCAP"]))
+            #代码、价格、总市值、PE
+            pe = d["PE"] if "PE" in d else 0
+            codes.append((d["CODE"].encode('UTF8'),d["PRICE"],d["TCAP"],pe))
         return codes
     except urllib2.HTTPError,e:
         print e.code
@@ -69,7 +72,7 @@ def get_history_data(code):
                 string.atol(line[10]),#volume
                 long(string.atof(line[11])/string.atol(line[10])*1000),#vwap
                 long(string.atof(line[9])*10000),#rise
-                string.atol(line[11]),#amount
+                long(float(line[11])),#amount
             )
             stocks.append(data)
         return stocks
@@ -83,13 +86,23 @@ def get_history_data(code):
         print e.message
         return None
 
+def _sina_2_163(code):
+    if code[1] == 'h':
+        code = '0' + code[2:]
+    else :
+        code = '1' + code[2:]
+    return code
 
-#返回某只股票的当前数据
-def get_current_data(code):
+def _163_2_sina(code):
     if code[0] == '0':
         code = 'sh' + code[1:]
     else :
         code = 'sz' + code[1:]
+    return code
+
+#返回某只股票的当前数据
+def get_current_data(code):
+    code = _163_2_sina(code)
     url='http://hq.sinajs.cn/list=' + code
     try:
         response = urllib2.urlopen(url)
@@ -106,9 +119,76 @@ def get_current_data(code):
             string.atol(line[8]),#volume
             long(string.atof(line[9])/string.atol(line[8])*1000),#vwap
             long((string.atof(line[3]) - string.atof(line[2]))/string.atof(line[2])*100 * 10000),#rise
-            string.atol(line[9]),#amount
+            long(float(line[9])),#amount
         )
         return data
+    except urllib2.HTTPError,e:
+        print e.code
+        return None
+
+def _get_detail(tag, retry_count=3, pause=0.001):
+    p = 0
+    code_list = []
+    while(True):
+        p = p+1
+        for _ in range(retry_count):
+            time.sleep(pause)
+            try:
+                url = "http://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeData?page=1&num=1000&sort=symbol&asc=1&node=%s&symbol=&_s_r_a=page" %tag
+                response = urllib2.urlopen(url)
+                text = response.read().decode('GBK')#.encode('UTF8')
+            except urllib2.HTTPError,e:
+                pass
+            else:
+                break
+        reg = re.compile(r'\,(.*?)\:')
+        text = reg.sub(r',"\1":', text)
+        text = text.replace('"{symbol', '{"symbol')
+        text = text.replace('{symbol', '{"symbol"')
+        jstr = json.dumps(text)
+        js = json.loads(jstr)
+        js = u'{"pars":%s}'%js
+        js = json.loads(js)
+        pars = js['pars']
+        for p in pars:
+            code_list.append(_163_2_sina(p["symbol"]))
+        return code_list
+
+def get_industry():
+    url = "http://vip.stock.finance.sina.com.cn/q/view/newSinaHy.php"
+    try:
+        industry_dict = {}
+        response = urllib2.urlopen(url)
+        html = response.read().decode('GBK').encode('UTF8')
+        data_str = html.split('=')[1]
+        data_json = json.loads(data_str)
+        for row in data_json.values():
+            industry_tag = row.split(',')[0]
+            industry_value = row.split(',')[1]
+            code_list = _get_detail(industry_tag)
+            for code in code_list:
+                industry_dict[code] = industry_value
+        return industry_dict
+    except urllib2.HTTPError,e:
+        print e.code
+        return None
+
+
+def get_concept():
+    url = "http://money.finance.sina.com.cn/q/view/newFLJK.php?param=class"
+    try:
+        concept_dict = {}
+        response = urllib2.urlopen(url)
+        html = response.read().decode('GBK').encode('UTF8')
+        data_str = html.split('=')[1]
+        data_json = json.loads(data_str)
+        for row in data_json.values():
+            concept_tag = row.split(',')[0]
+            concept_value = row.split(',')[1]
+            code_list = _get_detail(concept_tag)
+            for code in code_list:
+                concept_dict[code] = concept_value
+        return concept_dict
     except urllib2.HTTPError,e:
         print e.code
         return None

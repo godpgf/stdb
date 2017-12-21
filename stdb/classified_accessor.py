@@ -56,7 +56,7 @@ class LocalClassifiedProxy(ClassifiedProxy):
                 self._cache_industry_info = pickle.load(f)
                 f.close()
             else:
-                self._cache_industry_info = get_ts_industry()
+                self._cache_industry_info = get_industry()
                 if self._cache_path is not None:
                     if os.path.exists(self._cache_path) is False:
                         os.makedirs(self._cache_path)
@@ -80,7 +80,7 @@ class LocalClassifiedProxy(ClassifiedProxy):
                 self._cache_concept_info = pickle.load(f)
                 f.close()
             else:
-                self._cache_concept_info = get_ts_concept()
+                self._cache_concept_info = get_concept()
                 if self._cache_path is not None:
                     if os.path.exists(self._cache_path) is False:
                         os.makedirs(self._cache_path)

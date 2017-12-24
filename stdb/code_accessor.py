@@ -3,10 +3,10 @@
 
 import os
 import abc
-from six import with_metaclass, string_types
+from six import with_metaclass
 import numpy as np
-
-from .data_reader import get_all_stock_code
+import pandas as pd
+from .data_reader import *
 
 
 class CodeProxy(with_metaclass(abc.ABCMeta)):
@@ -28,18 +28,34 @@ class LocalCodeProxy(CodeProxy):
 
     def get_codes(self):
         if self._cache is None:
-            code_type = np.dtype([('code', '|S7'), ('price', 'float64'), ('cup', 'float64'), ('pe', 'float64')])
             if self._is_offline:
-                path = '%s/%s.bin'%(self._cache_path,'codes')
+                path = '%s/%s.csv'%(self._cache_path,'codes')
                 if os.path.exists(path) is False:
                     return None
                 #self._cache = np.fromfile(path, np.dtype('|S7'))
-                self._cache = np.fromfile(path, code_type)
+                self._cache = pd.read_csv(path, dtype=str)
             else:
-                self._cache = np.array(get_all_stock_code(),code_type)
-
+                codes, price, cap, pe = get_all_stock_code()
+                industry = get_industry()
+                industry_list = []
+                market_list = []
+                for code in codes:
+                    if code in industry:
+                        industry_list.append(industry[code].encode('UTF8'))
+                    else:
+                        industry_list.append("其他")
+                    if code[0] == '0':
+                        market_list.append('0000001')
+                    else:
+                        market_list.append('1399001')
+                self._cache = pd.DataFrame({"code":np.array(codes),
+                                            "price":np.array(price),
+                                            "cap":np.array(cap),
+                                            "pe":np.array(pe),
+                                            "market":np.array(market_list),
+                                            "industry":np.array(industry_list)},columns=["code","market","industry","price","cap","pe"])
                 if self._cache_path is not None:
                     if os.path.exists(self._cache_path) is False:
                         os.makedirs(self._cache_path)
-                    self._cache.tofile('%s/%s.bin'%(self._cache_path,'codes'))
+                    self._cache.to_csv('%s/%s.csv'%(self._cache_path,'codes'), index = False)
         return self._cache

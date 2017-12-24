@@ -5,6 +5,7 @@ from .code_accessor import LocalCodeProxy
 from .fundamental_accessor import LocalFundamentalProxy
 from .classified_accessor import LocalClassifiedProxy
 import numpy as np
+import pandas as pd
 
 
 def cal_market_data(stock_list):
@@ -112,15 +113,76 @@ def cal_market_data(stock_list):
     history_data = [(date[i], open[i], high[i], low[i], close[i], volume[i], vwap[i],returns[i], amount[i]) for i in xrange(len(date))]
     return np.array(history_data, dtype=stocktype)
 
-
 class StockData(object):
-    def __init__(self, bar, market, industry, concept, totals, earning_ratios):
+    def __init__(self, bar, market, industry, totals, earning_ratios = 0):
         self.bar = bar
         self.market = market
         self.industry = industry
-        self.concept = concept
         self.totals = totals
         self.earning_ratios = earning_ratios
+
+def download_stock_data(cache_path = "data"):
+    codeProxy = LocalCodeProxy(cache_path)
+    codes = codeProxy.get_codes()
+    dataProxy = LocalDataProxy(cache_path)
+
+    industry_map = {}
+
+    code_list = []
+    price = []
+    cap = []
+    pe = []
+    market = []
+    industry = []
+    for index, row in codes.iterrows():
+        data = dataProxy.get_all_Data(row["code"])
+        if data is not None and len(data) > 0:
+            code_list.append(row["code"])
+            price.append(row["price"])
+            cap.append(row["cap"])
+            pe.append(row['pe'])
+            market.append(row["market"])
+            industry.append(row["industry"])
+
+            dataProxy.get_all_Data(row["market"])
+            if row["industry"] not in industry_map:
+                industry_map[row["industry"]] = list()
+            industry_map[row["industry"]].append(StockData(data,
+                                                           row['market'],
+                                                           row['industry'],
+                                                           float(row['cap'])/float(row['price'])))
+    pd.DataFrame({"code": np.array(code_list),
+                  "price": np.array(price),
+                  "cap": np.array(cap),
+                  "pe": np.array(pe),
+                  "market": np.array(market),
+                  "industry": np.array(industry)},
+                 columns=["code", "market", "industry", "price", "cap", "pe"]).to_csv('%s/%s.csv' % (cache_path, 'codes'), index=False)
+
+    for key, value in industry_map.items():
+        data = cal_market_data(value)
+        df = pd.DataFrame({"date":data["date"],
+                           "open":data["open"],
+                           "high":data["high"],
+                           "low":data["low"],
+                           "close":data["close"],
+                           "volume":data["volume"],
+                           "vwap":data["vwap"],
+                           "returns":data["returns"],
+                           "amount":data["amount"]}, columns=["date","open","high","low","close","volume","vwap","returns","amount"])
+        df.to_csv("%s/%s.csv"%(cache_path,key),index=False)
+
+
+def refresh_stock_data(cache_path = "data"):
+    #TODO
+    pass
+
+
+#TODO delete later
+#------------------------------------------------------------
+
+
+
 
 
 def cal_all_market_data(stock_dict, is_industry):

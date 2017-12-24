@@ -1,6 +1,6 @@
 #coding=utf-8
 #author=godpgf
-
+#TODO delete later
 import os
 import abc
 from six import with_metaclass, string_types
@@ -10,7 +10,6 @@ except ImportError:
   import pickle
 
 from .data_reader import *
-
 
 class FundamentalProxy(with_metaclass(abc.ABCMeta)):
 

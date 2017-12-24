@@ -94,10 +94,15 @@ class LocalDataProxy(DataProxy):
         try:
             bars = self._cache[order_book_id]
         except KeyError:
+            cache_path = self._cache_path[order_book_id] if isinstance(self._cache_path, dict) else self._cache_path
+            path = '%s/%s.csv' % (cache_path, order_book_id)
             if self._is_offline :
-                path = '%s/%s.bin'%(self._cache_path,order_book_id)
                 if os.path.exists(path) is False:
                     return None
+                df = pd.read_csv(path)
+                data = [(row["date"],row["open"],row["high"],row["low"],row["close"],
+                         row["volume"],row["vwap"],row["returns"],row["amount"]) for index, row in df.iterrows()]
+
                 stocktype = np.dtype([
                     ('date', 'uint64'), ('open', 'float64'),
                     ('high', 'float64'), ('low', 'float64'),
@@ -105,15 +110,17 @@ class LocalDataProxy(DataProxy):
                     ('vwap', 'float64'), ('returns', 'float64'),
                     ('amount','float64')
                 ])
-                bars = np.fromfile(path,stocktype)
+                bars = np.array(data, dtype=stocktype)
             else:
                 bars = self._data_source.get_all_bars(order_book_id)
                 if bars is None:
                     return None
-                if self._cache_path:
-                    if os.path.exists(self._cache_path) is False:
-                        os.makedirs(self._cache_path)
-                    bars.tofile('%s/%s.bin'%(self._cache_path,order_book_id))
+                if cache_path:
+                    if os.path.exists(cache_path) is False:
+                        os.makedirs(cache_path)
+                    df = pd.DataFrame({"date":bars["date"],"open":bars["open"],"high":bars["high"],"low":bars["low"],"close":bars["close"],"volume":bars["volume"],"vwap":bars["vwap"],"returns":bars["returns"],"amount":bars["amount"]},
+                                      columns=["date","open","high","low","close","volume","vwap","returns","amount"])
+                    df.to_csv(path, index=False)
 
             min_date_int = date2long(self.min_date)*1000000
             bars = bars[np.where(bars['date'] > min_date_int)]

@@ -18,12 +18,27 @@ class LocalDataSource(object):
         right = self._trading_dates.searchsorted(end_date, side='right')
         return self._trading_dates[left:right]
 
-    def get_all_bars(self, order_book_id):
+    def get_all_bars(self, order_book_id, trading_calender_int = None):
         history_data = None
         cur_data = None
         if len(order_book_id) == 7:
-            history_data = get_history_data(order_book_id)
-            cur_data = get_current_data(order_book_id)
+            history_data = get_history_data(order_book_id, trading_calender_int)
+            if history_data and trading_calender_int:
+                cid = trading_calender_int.searchsorted(1000000 * history_data[0][0])
+                if cid < len(trading_calender_int) -1:
+                    next_date = trading_calender_int[cid+1] / 1000000
+                    cur_data = get_current_data(order_book_id)
+                    if cur_data:
+                        close = history_data[0][4]
+                        #打上下一天数据为空标记
+                        if cur_data[0] > next_date:
+                            history_data.insert(0,(
+                                next_date,close,close,close,close,0,0,0,0
+                            ))
+
+
+            else:
+                cur_data = get_current_data(order_book_id)
 
         else:
             #history_data = get_ts_history_data(order_book_id)

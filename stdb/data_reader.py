@@ -18,11 +18,16 @@ def get_all_stock_code():
         html = response.read().decode('GB2312')
         data = json.loads(html)["list"]
         codes = []
+        price = []
+        cap = []
+        pe = []
         for d in data :
             #代码、价格、总市值、PE
-            pe = d["PE"] if "PE" in d else 0
-            codes.append((d["CODE"].encode('UTF8'),d["PRICE"],d["TCAP"],pe))
-        return codes
+            codes.append(d["CODE"].encode('UTF8'))
+            price.append(d["PRICE"])
+            cap.append(d["TCAP"])
+            pe.append(d["PE"] if "PE" in d else 0)
+        return codes,price,cap,pe
     except urllib2.HTTPError,e:
         print e.code
         return None
@@ -48,7 +53,7 @@ def _2str(date):
 
 
 #返回某只股票的所有历史数据
-def get_history_data(code):
+def get_history_data(code, trading_calender_int = None):
     url = 'http://quotes.money.163.com/service/chddata.html?code='+code+'&start=19910403&end='+time.strftime("%Y%m%d")+ '&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;VOTURNOVER;VATURNOVER'
     #url = 'http://quotes.money.163.com/service/chddata.html?code='+code+'&start=20100403&end='+time.strftime("%Y%m%d")+ '&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;VOTURNOVER;VATURNOVER'
 
@@ -57,6 +62,7 @@ def get_history_data(code):
         html = response.read().decode('latin1').encode('UTF8')
         table = html.split('\r\n')
         stocks = []
+        next_date = None
         for i in range(1,len(table)-1):
             if table[i].find('None') != -1:
                 continue
@@ -74,7 +80,24 @@ def get_history_data(code):
                 long(string.atof(line[9])*10000),#rise
                 long(float(line[11])),#amount
             )
+
+            if trading_calender_int:
+                cid = trading_calender_int.searchsorted(1000000 * data[0])
+                if cid < len(trading_calender_int) - 1:
+                    next_date = trading_calender_int[ + 1] / 1000000
+                    #在下一条数据打上缺失标记
+                    assert stocks[-1][0] >= next_date
+                    if stocks[-1][0] > next_date:
+                        stocks.append((next_date,data[4],data[4],data[4],data[4],0,0,0,0))
+
             stocks.append(data)
+        if trading_calender_int:
+            cid = trading_calender_int.searchsorted(1000000 * stocks[-1][0])
+            assert cid < len(trading_calender_int)
+            if cid > 0:
+                #在最远一条数据打上以后缺失标记
+                data = (trading_calender_int[cid-1],stocks[-1][1],stocks[-1][1],stocks[-1][1],stocks[-1][1],0,0,0,0)
+                stocks.append(data)
         return stocks
     except urllib2.HTTPError,e:
         print e.code
@@ -101,30 +124,38 @@ def _163_2_sina(code):
     return code
 
 #返回某只股票的当前数据
-def get_current_data(code):
+def get_current_data(code, retry_count=3, pause=0.01):
     code = _163_2_sina(code)
     url='http://hq.sinajs.cn/list=' + code
-    try:
-        response = urllib2.urlopen(url)
-        html = response.read().decode('latin1').encode('UTF8')
-        line = html.split(',')
-        if len(line) < 2 or line[8] == '0':
+    for _ in range(retry_count):
+        time.sleep(pause)
+        try:
+            response = urllib2.urlopen(url)
+            html = response.read().decode('latin1').encode('UTF8')
+            line = html.split(',')
+            if len(line) < 2 or line[8] == '0':
+                return None
+            data = (
+                date2long(line[30]),#date
+                long(string.atof(line[1])*1000),#open
+                long(string.atof(line[4])*1000),#high
+                long(string.atof(line[5])*1000),#low
+                long(string.atof(line[3])*1000),#close
+                string.atol(line[8]),#volume
+                long(string.atof(line[9])/string.atol(line[8])*1000),#vwap
+                long((string.atof(line[3]) - string.atof(line[2]))/string.atof(line[2])*100 * 10000),#rise
+                long(float(line[9])),#amount
+            )
+            return data
+        except urllib2.HTTPError, e:
+            print e.message
             return None
-        data = (
-            date2long(line[30]),#date
-            long(string.atof(line[1])*1000),#open
-            long(string.atof(line[4])*1000),#high
-            long(string.atof(line[5])*1000),#low
-            long(string.atof(line[3])*1000),#close
-            string.atol(line[8]),#volume
-            long(string.atof(line[9])/string.atol(line[8])*1000),#vwap
-            long((string.atof(line[3]) - string.atof(line[2]))/string.atof(line[2])*100 * 10000),#rise
-            long(float(line[9])),#amount
-        )
-        return data
-    except urllib2.HTTPError,e:
-        print e.code
-        return None
+        except urllib2.URLError, e:
+            print url
+            print e.message
+            return None
+        else:
+            break
 
 def _get_detail(tag, retry_count=3, pause=0.001):
     p = 0
@@ -151,7 +182,7 @@ def _get_detail(tag, retry_count=3, pause=0.001):
         js = json.loads(js)
         pars = js['pars']
         for p in pars:
-            code_list.append(_163_2_sina(p["symbol"]))
+            code_list.append(_sina_2_163(p["symbol"]))
         return code_list
 
 def get_industry():

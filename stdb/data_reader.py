@@ -54,13 +54,15 @@ def _2str(date):
 
 #返回某只股票的所有历史数据
 def get_history_data(code, trading_calender_int = None):
-    url = 'http://quotes.money.163.com/service/chddata.html?code='+code+'&start=19910403&end='+time.strftime("%Y%m%d")+ '&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;VOTURNOVER;VATURNOVER'
+    url = 'http://quotes.money.163.com/service/chddata.html?code='+code+'&start=%d&end='%(19910403 if trading_calender_int is None else trading_calender_int[0] / 1000000)+time.strftime("%Y%m%d")+ '&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;VOTURNOVER;VATURNOVER'
     #url = 'http://quotes.money.163.com/service/chddata.html?code='+code+'&start=20100403&end='+time.strftime("%Y%m%d")+ '&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;VOTURNOVER;VATURNOVER'
 
     try:
         response = urllib2.urlopen(url)
         html = response.read().decode('latin1').encode('UTF8')
         table = html.split('\r\n')
+        if len(table) < 3:
+            return None
         stocks = []
         next_date = None
         for i in range(1,len(table)-1):
@@ -81,22 +83,24 @@ def get_history_data(code, trading_calender_int = None):
                 long(float(line[11])),#amount
             )
 
-            if trading_calender_int:
+            if trading_calender_int is not None and len(stocks) > 0:
                 cid = trading_calender_int.searchsorted(1000000 * data[0])
                 if cid < len(trading_calender_int) - 1:
-                    next_date = trading_calender_int[ + 1] / 1000000
+                    next_date = trading_calender_int[cid + 1] / 1000000
                     #在下一条数据打上缺失标记
                     assert stocks[-1][0] >= next_date
                     if stocks[-1][0] > next_date:
                         stocks.append((next_date,data[4],data[4],data[4],data[4],0,0,0,0))
 
             stocks.append(data)
-        if trading_calender_int:
+        if len(stocks) == 0:
+            return None
+        if trading_calender_int is not None:
             cid = trading_calender_int.searchsorted(1000000 * stocks[-1][0])
             assert cid < len(trading_calender_int)
             if cid > 0:
                 #在最远一条数据打上以后缺失标记
-                data = (trading_calender_int[cid-1],stocks[-1][1],stocks[-1][1],stocks[-1][1],stocks[-1][1],0,0,0,0)
+                data = (trading_calender_int[cid-1] / 1000000,stocks[-1][1],stocks[-1][1],stocks[-1][1],stocks[-1][1],0,0,0,0)
                 stocks.append(data)
         return stocks
     except urllib2.HTTPError,e:

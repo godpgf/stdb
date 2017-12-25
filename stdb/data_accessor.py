@@ -112,7 +112,7 @@ class LocalDataProxy(DataProxy):
                 ])
                 bars = np.array(data, dtype=stocktype)
             else:
-                bars = self._data_source.get_all_bars(order_book_id)
+                bars = self._data_source.get_all_bars(order_book_id, self.trading_calender_int)
                 if bars is None:
                     return None
                 if cache_path:
@@ -216,6 +216,7 @@ class LocalDataProxy(DataProxy):
         # midpend
         last_index = trading_calender_int.searchsorted(bars[-1]["date"])
         midpend_date = trading_calender_int[start_index: last_index + 1]
+
         midpend_bars = np.zeros(len(midpend_date), dtype=bars.dtype)
         bars_index = bars["date"].searchsorted(midpend_date[0])
         for i in xrange(len(midpend_bars)):

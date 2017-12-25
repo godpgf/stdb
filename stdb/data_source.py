@@ -23,7 +23,7 @@ class LocalDataSource(object):
         cur_data = None
         if len(order_book_id) == 7:
             history_data = get_history_data(order_book_id, trading_calender_int)
-            if history_data and trading_calender_int:
+            if history_data and trading_calender_int is not None:
                 cid = trading_calender_int.searchsorted(1000000 * history_data[0][0])
                 if cid < len(trading_calender_int) -1:
                     next_date = trading_calender_int[cid+1] / 1000000

@@ -28,13 +28,18 @@ class LocalDataSource(object):
                 if cid < len(trading_calender_int) -1:
                     next_date = trading_calender_int[cid+1] / 1000000
                     cur_data = get_current_data(order_book_id)
+                    close = history_data[0][4]
                     if cur_data:
-                        close = history_data[0][4]
                         #打上下一天数据为空标记
                         if cur_data[0] > next_date:
                             history_data.insert(0,(
                                 next_date,close,close,close,close,0,0,0,0
                             ))
+                    else:
+                        history_data.insert(0, (
+                            next_date, close, close, close, close, 0, 0, 0, 0
+                        ))
+
 
 
             else:

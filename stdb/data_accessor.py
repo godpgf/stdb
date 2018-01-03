@@ -101,14 +101,15 @@ class LocalDataProxy(DataProxy):
                     return None
                 df = pd.read_csv(path)
                 data = [(row["date"],row["open"],row["high"],row["low"],row["close"],
-                         row["volume"],row["vwap"],row["returns"],row["amount"]) for index, row in df.iterrows()]
+                         row["volume"],row["vwap"],row["returns"],row["amount"],row["turn"],row["tcap"],row["mcap"]) for index, row in df.iterrows()]
 
                 stocktype = np.dtype([
                     ('date', 'uint64'), ('open', 'float64'),
                     ('high', 'float64'), ('low', 'float64'),
                     ('close', 'float64'), ('volume', 'float64'),
                     ('vwap', 'float64'), ('returns', 'float64'),
-                    ('amount','float64')
+                    ('amount','float64'), ('turn', 'float64'),
+                    ('tcap','float64'), ('mcap', 'float64')
                 ])
                 bars = np.array(data, dtype=stocktype)
             else:
@@ -118,8 +119,9 @@ class LocalDataProxy(DataProxy):
                 if cache_path:
                     if os.path.exists(cache_path) is False:
                         os.makedirs(cache_path)
-                    df = pd.DataFrame({"date":bars["date"],"open":bars["open"],"high":bars["high"],"low":bars["low"],"close":bars["close"],"volume":bars["volume"],"vwap":bars["vwap"],"returns":bars["returns"],"amount":bars["amount"]},
-                                      columns=["date","open","high","low","close","volume","vwap","returns","amount"])
+                    df = pd.DataFrame({"date":bars["date"],"open":bars["open"],"high":bars["high"],"low":bars["low"],"close":bars["close"],"volume":bars["volume"],
+                                       "vwap":bars["vwap"],"returns":bars["returns"],"amount":bars["amount"],"turn":bars["turn"],"tcap":bars["tcap"],"mcap":bars["mcap"]},
+                                      columns=["date","open","high","low","close","volume","vwap","returns","amount","turn","tcap","mcap"])
                     df.to_csv(path, index=False)
 
             min_date_int = date2long(self.min_date)*1000000
@@ -139,8 +141,8 @@ class LocalDataProxy(DataProxy):
             return '%s-%s-%s'%('%d'%year,_2str(month),_2str(day))
         date_col = bars["date"]
         index = [pd.Timestamp(int2date(data / 1000000)) for data in date_col]
-        data = [[bars["open"][i],bars["high"][i],bars["low"][i],bars["close"][i],bars["volume"][i],bars["vwap"][i],bars['returns'][i],bars['amount'][i]] for i in range(len(index))]
-        return pd.DataFrame(np.array(data),index,columns=["Open","High","Low","Close","Volume","Vwap",'Returns','Amount'])
+        data = [[bars["open"][i],bars["high"][i],bars["low"][i],bars["close"][i],bars["volume"][i],bars["vwap"][i],bars['returns'][i],bars['amount'][i],bars['turn'][i],bars['tcap'][i],bars['mcap'][i]] for i in range(len(index))]
+        return pd.DataFrame(np.array(data),index,columns=["Open","High","Low","Close","Volume","Vwap",'Returns','Amount','Turn','Tcap','Mcap'])
 
 
     def get_bar(self, order_book_id, dt):
@@ -212,6 +214,8 @@ class LocalDataProxy(DataProxy):
         prepend_bars["high"].fill(bars[0]["open"])
         prepend_bars["low"].fill(bars[0]["open"])
         prepend_bars["vwap"].fill(bars[0]["vwap"])
+        prepend_bars["tcap"].fill(bars[0]["tcap"])
+        prepend_bars["mcap"].fill(bars[0]["mcap"])
 
         # midpend
         last_index = trading_calender_int.searchsorted(bars[-1]["date"])
@@ -224,7 +228,7 @@ class LocalDataProxy(DataProxy):
                 midpend_bars[i] = bars[bars_index]
                 bars_index += 1
             else:
-                data = (midpend_date[i], bars[bars_index - 1]["close"], bars[bars_index - 1]["close"], bars[bars_index - 1]["close"], bars[bars_index - 1]["close"], 0, bars[bars_index - 1]["vwap"], 0, 0)
+                data = (midpend_date[i], bars[bars_index - 1]["close"], bars[bars_index - 1]["close"], bars[bars_index - 1]["close"], bars[bars_index - 1]["close"], 0, bars[bars_index - 1]["vwap"], 0, 0, 0, bars[bars_index-1]["tcap"], bars[bars_index-1]["mcap"])
                 midpend_bars[i] = data
 
         # append
@@ -237,6 +241,8 @@ class LocalDataProxy(DataProxy):
         append_bars["high"].fill(bars[-1]["close"])
         append_bars["low"].fill(bars[-1]["close"])
         append_bars["vwap"].fill(bars[-1]["vwap"])
+        append_bars["tcap"].fill(bars[-1]["tcap"])
+        append_bars["mcap"].fill(bars[-1]["mcap"])
 
         # fill bars
         new_bars = np.concatenate([prepend_bars, midpend_bars, append_bars])

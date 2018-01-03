@@ -54,7 +54,7 @@ def _2str(date):
 
 #返回某只股票的所有历史数据
 def get_history_data(code, trading_calender_int = None):
-    url = 'http://quotes.money.163.com/service/chddata.html?code='+code+'&start=%d&end='%(19910403 if trading_calender_int is None else trading_calender_int[0] / 1000000)+time.strftime("%Y%m%d")+ '&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;VOTURNOVER;VATURNOVER'
+    url = 'http://quotes.money.163.com/service/chddata.html?code='+code+'&start=%d&end='%(19910403 if trading_calender_int is None else trading_calender_int[0] / 1000000)+time.strftime("%Y%m%d")+ '&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;VOTURNOVER;VATURNOVER;TURNOVER;TCAP;MCAP'
     #url = 'http://quotes.money.163.com/service/chddata.html?code='+code+'&start=20100403&end='+time.strftime("%Y%m%d")+ '&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;VOTURNOVER;VATURNOVER'
 
     try:
@@ -71,6 +71,10 @@ def get_history_data(code, trading_calender_int = None):
             line = table[i].split(',')
             if string.atoi(line[10]) == 0:
                 continue
+            if len(line[12]) == 0:
+                line[12] = '0'
+                line[13] = '0'
+                line[14] = '0'
             data = (
                 date2long(line[0]),#date
                 long(string.atof(line[6])*1000),#open
@@ -81,6 +85,9 @@ def get_history_data(code, trading_calender_int = None):
                 long(string.atof(line[11])/string.atol(line[10])*1000),#vwap
                 long(string.atof(line[9])*10000),#rise
                 long(float(line[11])),#amount
+                long(string.atof(line[12])*10000),#turn
+                long(float(line[13])),#tcap
+                long(float(line[14])),#mcap
             )
 
             if trading_calender_int is not None and len(stocks) > 0:
@@ -90,7 +97,7 @@ def get_history_data(code, trading_calender_int = None):
                     #在下一条数据打上缺失标记
                     assert stocks[-1][0] >= next_date
                     if stocks[-1][0] > next_date:
-                        stocks.append((next_date,data[4],data[4],data[4],data[4],0,0,0,0))
+                        stocks.append((next_date,data[4],data[4],data[4],data[4],0,0,0,0,0,data[10],data[11]))
 
             stocks.append(data)
         if len(stocks) == 0:
@@ -100,7 +107,7 @@ def get_history_data(code, trading_calender_int = None):
             assert cid < len(trading_calender_int)
             if cid > 0:
                 #在最远一条数据打上以后缺失标记
-                data = (trading_calender_int[cid-1] / 1000000,stocks[-1][1],stocks[-1][1],stocks[-1][1],stocks[-1][1],0,0,0,0)
+                data = (trading_calender_int[cid-1] / 1000000,stocks[-1][1],stocks[-1][1],stocks[-1][1],stocks[-1][1],0,0,0,0,0,stocks[-1][10],stocks[-1][11])
                 stocks.append(data)
         return stocks
     except urllib2.HTTPError,e:
@@ -149,6 +156,7 @@ def get_current_data(code, retry_count=3, pause=0.01):
                 long(string.atof(line[9])/string.atol(line[8])*1000),#vwap
                 long((string.atof(line[3]) - string.atof(line[2]))/string.atof(line[2])*100 * 10000),#rise
                 long(float(line[9])),#amount
+                0,0,0
             )
             return data
         except urllib2.HTTPError, e:

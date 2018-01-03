@@ -29,15 +29,18 @@ class LocalDataSource(object):
                     next_date = trading_calender_int[cid+1] / 1000000
                     cur_data = get_current_data(order_book_id)
                     close = history_data[0][4]
+                    turn = history_data[0][9]
+                    tcap = history_data[0][10]
+                    mcap = history_data[0][11]
                     if cur_data:
                         #打上下一天数据为空标记
                         if cur_data[0] > next_date:
                             history_data.insert(0,(
-                                next_date,close,close,close,close,0,0,0,0
+                                next_date,close,close,close,close,0,0,0,0,turn,tcap,mcap
                             ))
                     else:
                         history_data.insert(0, (
-                            next_date, close, close, close, close, 0, 0, 0, 0
+                            next_date, close, close, close, close, 0, 0, 0, 0,turn,tcap,mcap
                         ))
 
 
@@ -54,13 +57,21 @@ class LocalDataSource(object):
             return None
 
         if cur_data is not None and cur_data[0] != history_data[0][0]:
-            history_data.insert(0,cur_data)
+            close = history_data[0][4]
+            volume = history_data[0][5]
+            turn = history_data[0][9] * (0 if volume == 0 else cur_data[5] / volume)
+            tcap = history_data[0][10] * (cur_data[4] / close)
+            mcap = history_data[0][11] * (cur_data[4] / close)
+            cur_data = (cur_data[0],cur_data[1],cur_data[2],cur_data[3],cur_data[4],cur_data[5],
+                        cur_data[6],cur_data[7],cur_data[8],turn,tcap,mcap)
+            history_data.insert(0, cur_data)
         stocktype = np.dtype([
             ('date', 'uint64'), ('open', 'float64'),
             ('high', 'float64'), ('low', 'float64'),
             ('close', 'float64'), ('volume', 'float64'),
             ('vwap', 'float64'), ('returns', 'float64'),
-            ('amount','float64')
+            ('amount','float64'), ('turn', 'float64'),
+            ('tcap', 'float64'), ('mcap', 'float64')
         ])
         bars = np.array(history_data,dtype=stocktype)
         bars = bars[::-1]#转向
@@ -77,6 +88,8 @@ class LocalDataSource(object):
             col[:] = np.round(1 / self.PRICE_SCALE * col, 2)
         rise_col = bars['returns']
         rise_col[:] = rise_col / (self.RISE_SCALE * 100.)
+        turn_col = bars['turn']
+        turn_col[:] = turn_col / (self.RISE_SCALE * 100.)
         # if len(bars["close"]) >= 2:
         #     rice_col[-1] = (bars["close"][-1]-bars["close"][-2]) * self.RISE_SCALE / bars["close"][-2] * 100
         # rice_col[:] = 1 / (self.RISE_SCALE*100) * rice_col

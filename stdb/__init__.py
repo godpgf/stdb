@@ -103,14 +103,16 @@ def cal_market_data(stock_list):
         returns.append( returnsValue )
         amount.append(amountValue)
 
+
     stocktype = np.dtype([
         ('date', 'uint64'), ('open', 'float64'),
         ('high', 'float64'), ('low', 'float64'),
         ('close', 'float64'), ('volume', 'float64'),
         ('vwap', 'float64'), ('returns', 'float64'),
-        ('amount','float64')
+        ('amount','float64'), ('turn', 'float64'),
+        ('tcap', 'float64'), ('mcap', 'float64')
     ])
-    history_data = [(date[i], open[i], high[i], low[i], close[i], volume[i], vwap[i],returns[i], amount[i]) for i in xrange(len(date))]
+    history_data = [(date[i], open[i], high[i], low[i], close[i], volume[i], vwap[i],returns[i], amount[i], 0, 0, 0) for i in xrange(len(date))]
     return np.array(history_data, dtype=stocktype)
 
 class StockData(object):
@@ -169,7 +171,10 @@ def download_stock_data(cache_path = "data"):
                            "volume":data["volume"],
                            "vwap":data["vwap"],
                            "returns":data["returns"],
-                           "amount":data["amount"]}, columns=["date","open","high","low","close","volume","vwap","returns","amount"])
+                           "amount":data["amount"],
+                           "turn":data["turn"],
+                           "tcap":data["tcap"],
+                           "mcap":data["mcap"]}, columns=["date","open","high","low","close","volume","vwap","returns","amount","turn","tcap","mcap"])
         df.to_csv("%s/%s.csv"%(cache_path,key),index=False)
 
 

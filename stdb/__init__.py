@@ -129,6 +129,7 @@ def download_stock_data(cache_path = "data"):
     dataProxy = LocalDataProxy(cache_path)
 
     industry_map = {}
+    markey_set = set()
 
     code_list = []
     price = []
@@ -136,6 +137,7 @@ def download_stock_data(cache_path = "data"):
     pe = []
     market = []
     industry = []
+    days = []
     for index, row in codes.iterrows():
         data = dataProxy.get_all_Data(row["code"])
         if data is not None and len(data) > 0:
@@ -144,8 +146,9 @@ def download_stock_data(cache_path = "data"):
             cap.append(row["cap"])
             pe.append(row['pe'])
             market.append(row["market"])
+            markey_set.add(row['market'])
             industry.append(row["industry"])
-
+            days.append(dataProxy.get_trading_days(row["code"]))
             dataProxy.get_all_Data(row["market"])
             if row["industry"] not in industry_map:
                 industry_map[row["industry"]] = list()
@@ -153,13 +156,6 @@ def download_stock_data(cache_path = "data"):
                                                            row['market'],
                                                            row['industry'],
                                                            float(row['cap'])/float(row['price'])))
-    pd.DataFrame({"code": np.array(code_list),
-                  "price": np.array(price),
-                  "cap": np.array(cap),
-                  "pe": np.array(pe),
-                  "market": np.array(market),
-                  "industry": np.array(industry)},
-                 columns=["code", "market", "industry", "price", "cap", "pe"]).to_csv('%s/%s.csv' % (cache_path, 'codes'), index=False)
 
     for key, value in industry_map.items():
         data = cal_market_data(value)
@@ -175,7 +171,33 @@ def download_stock_data(cache_path = "data"):
                            "turn":data["turn"],
                            "tcap":data["tcap"],
                            "mcap":data["mcap"]}, columns=["date","open","high","low","close","volume","vwap","returns","amount","turn","tcap","mcap"])
+        code_list.append(key)
+        price.append(data["close"][-1])
+        cap.append(None)
+        pe.append(None)
+        market.append(None)
+        industry.append(None)
+        days.append(len(data["date"]))
         df.to_csv("%s/%s.csv"%(cache_path,key),index=False)
+
+    for market_code in markey_set:
+        data = dataProxy.get_all_Data(market_code)
+        code_list.append(market_code)
+        price.append(data['close'][-1])
+        cap.append(None)
+        pe.append(None)
+        market.append(None)
+        industry.append(None)
+        days.append(len(data["date"]))
+
+    pd.DataFrame({"code": np.array(code_list),
+                  "price": np.array(price),
+                  "cap": np.array(cap),
+                  "pe": np.array(pe),
+                  "market": np.array(market),
+                  "industry": np.array(industry),
+                  "days":np.array(days)},
+                 columns=["code", "market", "industry", "price", "cap", "pe", "days"]).to_csv('%s/%s.csv' % (cache_path, 'codes'), index=False)
 
 
 def refresh_stock_data(cache_path = "data"):

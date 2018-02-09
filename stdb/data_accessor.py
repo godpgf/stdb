@@ -77,6 +77,7 @@ class LocalDataProxy(DataProxy):
         self._cache_path = cache_path
         self._is_offline = False if cache_path is None else is_offline
         self._cache = {}
+        self._trading_days = {}
         self._data_source = LocalDataSource()
         self.trading_calender_int = None
         self.min_date = min_date
@@ -125,11 +126,20 @@ class LocalDataProxy(DataProxy):
                     df.to_csv(path, index=False)
 
             min_date_int = date2long(self.min_date)*1000000
+            self._trading_days[order_book_id] = len(bars['date'])
             bars = bars[np.where(bars['date'] > min_date_int)]
             bars = self._fill_all_bars(bars)
             self._cache[order_book_id] = bars
 
         return bars
+
+    def get_trading_days(self, order_book_id):
+        try:
+            days = self._trading_days[order_book_id]
+            return days
+        except KeyError:
+            self.get_all_Data(order_book_id)
+            return self.get_trading_days(order_book_id)
 
     def get_table(self, order_book_id):
         bars = self.get_all_Data(order_book_id).copy()

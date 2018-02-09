@@ -184,7 +184,7 @@ def download_stock_data(cache_path = "data"):
         cap.append(None)
         pe.append(None)
         market.append(None)
-        industry.append(None)
+        industry.append(key)
         days.append(len(data["date"]))
         df.to_csv("%s/%s.csv"%(cache_path,key),index=False)
 
@@ -194,7 +194,7 @@ def download_stock_data(cache_path = "data"):
         price.append(data['close'][-1])
         cap.append(None)
         pe.append(None)
-        market.append(None)
+        market.append(market_code)
         industry.append(None)
         days.append(len(data["date"]))
     code_list.extend(c_code_list)

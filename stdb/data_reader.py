@@ -53,72 +53,75 @@ def _2str(date):
 
 
 #返回某只股票的所有历史数据
-def get_history_data(code, trading_calender_int = None):
+def get_history_data(code, trading_calender_int = None, retry_count=3,  timeout = 10, pause = 0.01):
     url = 'http://quotes.money.163.com/service/chddata.html?code='+code+'&start=%d&end='%(19910403 if trading_calender_int is None else trading_calender_int[0] / 1000000)+time.strftime("%Y%m%d")+ '&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;VOTURNOVER;VATURNOVER;TURNOVER;TCAP;MCAP'
     #url = 'http://quotes.money.163.com/service/chddata.html?code='+code+'&start=20100403&end='+time.strftime("%Y%m%d")+ '&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;VOTURNOVER;VATURNOVER'
 
-    try:
-        response = urllib2.urlopen(url)
-        html = response.read().decode('latin1').encode('UTF8')
-        table = html.split('\r\n')
-        if len(table) < 3:
-            return None
-        stocks = []
-        next_date = None
-        for i in range(1,len(table)-1):
-            if table[i].find('None') != -1:
-                continue
-            line = table[i].split(',')
-            if string.atoi(line[10]) == 0:
-                continue
-            if len(line[12]) == 0:
-                line[12] = '0'
-                line[13] = '0'
-                line[14] = '0'
-            data = (
-                date2long(line[0]),#date
-                long(string.atof(line[6])*1000),#open
-                long(string.atof(line[4])*1000),#high
-                long(string.atof(line[5])*1000),#low
-                long(string.atof(line[3])*1000),#close
-                string.atol(line[10]),#volume
-                long(string.atof(line[11])/string.atol(line[10])*1000),#vwap
-                long(string.atof(line[9])*10000),#rise
-                long(float(line[11])),#amount
-                long(string.atof(line[12])*10000),#turn
-                long(float(line[13])),#tcap
-                long(float(line[14])),#mcap
-            )
+    for _ in xrange(retry_count):
+        time.sleep(pause)
+        try:
+            response = urllib2.urlopen(url, timeout=timeout)
+            html = response.read().decode('latin1').encode('UTF8')
+            table = html.split('\r\n')
+            if len(table) < 3:
+                return None
+            stocks = []
+            next_date = None
+            for i in range(1,len(table)-1):
+                if table[i].find('None') != -1:
+                    continue
+                line = table[i].split(',')
+                if string.atoi(line[10]) == 0:
+                    continue
+                if len(line[12]) == 0:
+                    line[12] = '0'
+                    line[13] = '0'
+                    line[14] = '0'
+                data = (
+                    date2long(line[0]),#date
+                    long(string.atof(line[6])*1000),#open
+                    long(string.atof(line[4])*1000),#high
+                    long(string.atof(line[5])*1000),#low
+                    long(string.atof(line[3])*1000),#close
+                    string.atol(line[10]),#volume
+                    long(string.atof(line[11])/string.atol(line[10])*1000),#vwap
+                    long(string.atof(line[9])*10000),#rise
+                    long(float(line[11])),#amount
+                    long(string.atof(line[12])*10000),#turn
+                    long(float(line[13])),#tcap
+                    long(float(line[14])),#mcap
+                )
 
-            if trading_calender_int is not None and len(stocks) > 0:
-                cid = trading_calender_int.searchsorted(1000000 * data[0])
-                if cid < len(trading_calender_int) - 1:
-                    next_date = trading_calender_int[cid + 1] / 1000000
-                    #在下一条数据打上缺失标记
-                    assert stocks[-1][0] >= next_date
-                    if stocks[-1][0] > next_date:
-                        stocks.append((next_date,data[4],data[4],data[4],data[4],0,0,0,0,0,data[10],data[11]))
+                if trading_calender_int is not None and len(stocks) > 0:
+                    cid = trading_calender_int.searchsorted(1000000 * data[0])
+                    if cid < len(trading_calender_int) - 1:
+                        next_date = trading_calender_int[cid + 1] / 1000000
+                        #在下一条数据打上缺失标记
+                        assert stocks[-1][0] >= next_date
+                        if stocks[-1][0] > next_date:
+                            stocks.append((next_date,data[4],data[4],data[4],data[4],0,0,0,0,0,data[10],data[11]))
 
-            stocks.append(data)
-        if len(stocks) == 0:
-            return None
-        if trading_calender_int is not None:
-            cid = trading_calender_int.searchsorted(1000000 * stocks[-1][0])
-            assert cid < len(trading_calender_int)
-            if cid > 0:
-                #在最远一条数据打上以后缺失标记
-                data = (trading_calender_int[cid-1] / 1000000,stocks[-1][1],stocks[-1][1],stocks[-1][1],stocks[-1][1],0,0,0,0,0,stocks[-1][10],stocks[-1][11])
                 stocks.append(data)
-        return stocks
-    except urllib2.HTTPError,e:
-        print e.code
-        return None
-    except socket.error, e:
-        print e.message
-        return None
-    except urllib2.URLError, e:
-        print e.message
-        return None
+            if len(stocks) == 0:
+                return None
+            if trading_calender_int is not None:
+                cid = trading_calender_int.searchsorted(1000000 * stocks[-1][0])
+                assert cid < len(trading_calender_int)
+                if cid > 0:
+                    #在最远一条数据打上以后缺失标记
+                    data = (trading_calender_int[cid-1] / 1000000,stocks[-1][1],stocks[-1][1],stocks[-1][1],stocks[-1][1],0,0,0,0,0,stocks[-1][10],stocks[-1][11])
+                    stocks.append(data)
+            print code
+            return stocks
+        except urllib2.HTTPError,e:
+            print e.code
+        except socket.error, e:
+            print e.message
+        except urllib2.URLError, e:
+            print e.message
+        else:
+            break
+    return None
 
 def _sina_2_163(code):
     if code[1] == 'h':

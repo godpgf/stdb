@@ -139,24 +139,17 @@ def download_stock_data(cache_path = "data"):
     industry = []
     days = []
 
-    c_code_list = []
-    c_price = []
-    c_cap = []
-    c_pe = []
-    c_market = []
-    c_industry = []
-    c_days = []
     for index, row in codes.iterrows():
         data = dataProxy.get_all_Data(row["code"])
         if data is not None and len(data) > 0:
-            c_code_list.append(row["code"])
-            c_price.append(row["price"])
-            c_cap.append(row["cap"])
-            c_pe.append(row['pe'])
-            c_market.append(row["market"])
+            code_list.append(row["code"])
+            price.append(row["price"])
+            cap.append(row["cap"])
+            pe.append(row['pe'])
+            market.append(row["market"])
             markey_set.add(row['market'])
-            c_industry.append(row["industry"])
-            c_days.append(dataProxy.get_trading_days(row["code"]))
+            industry.append(row["industry"])
+            days.append(dataProxy.get_trading_days(row["code"]))
             dataProxy.get_all_Data(row["market"])
             if row["industry"] not in industry_map:
                 industry_map[row["industry"]] = list()
@@ -196,14 +189,7 @@ def download_stock_data(cache_path = "data"):
         pe.append(None)
         market.append(market_code)
         industry.append(None)
-        days.append(len(data["date"]))
-    code_list.extend(c_code_list)
-    price.extend(c_price)
-    cap.extend(c_cap)
-    pe.extend(c_pe)
-    market.extend(c_market)
-    industry.extend(c_industry)
-    days.extend(c_days)
+        days.append(dataProxy.get_trading_days(market_code))
 
     pd.DataFrame({"code": np.array(code_list),
                   "price": np.array(price),

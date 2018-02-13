@@ -32,15 +32,15 @@ class LocalDataSource(object):
                     turn = history_data[0][9]
                     tcap = history_data[0][10]
                     mcap = history_data[0][11]
-                    if cur_data:
+                    if cur_data and cur_data[0] != history_data[0][0]:
                         #打上下一天数据为空标记
                         if cur_data[0] > next_date:
                             history_data.insert(0,(
-                                next_date,close,close,close,close,0,0,0,0,turn,tcap,mcap
+                                next_date,close,close,close,close,0,0,0,0,0,tcap,mcap
                             ))
                     else:
                         history_data.insert(0, (
-                            next_date, close, close, close, close, 0, 0, 0, 0,turn,tcap,mcap
+                            next_date, close, close, close, close, 0, 0, 0, 0,0,tcap,mcap
                         ))
 
 

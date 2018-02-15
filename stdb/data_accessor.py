@@ -73,7 +73,7 @@ class LocalDataProxy(DataProxy):
     :param str cache_path:缓存地址
     :param is_offline:是否离线
     """
-    def __init__(self, cache_path=None, is_offline=False, min_date = "2005-01-01"):
+    def __init__(self, cache_path=None, is_offline=False, min_date = "1991-04-03"):
         self._cache_path = cache_path
         self._is_offline = False if cache_path is None else is_offline
         self._cache = {}

@@ -82,6 +82,8 @@ class LocalDataProxy(DataProxy):
         self.trading_calender_int = None
         self.min_date = min_date
         market_data = self.get_all_Data('0000001')
+        if market_data is None:
+            return
         market_data = market_data[np.where(market_data['volume'] > 0)]
         self._data_source.init_trading_dates(market_data['date'])
         self.trading_calendar = self.get_trading_dates(min_date, datetime.date.today())

@@ -103,8 +103,12 @@ class LocalDataProxy(DataProxy):
                 if os.path.exists(path) is False:
                     return None
                 df = pd.read_csv(path)
-                data = [(row["date"],row["open"],row["high"],row["low"],row["close"],
-                         row["volume"],row["vwap"],row["returns"],row["amount"],row["turn"],row["tcap"],row["mcap"]) for index, row in df.iterrows()]
+                #data = [(row["date"],row["open"],row["high"],row["low"],row["close"],
+                #         row["volume"],row["vwap"],row["returns"],row["amount"],row["turn"],row["tcap"],row["mcap"]) for index, row in df.iterrows()]
+
+                data = np.array([df['date'].values,df['open'].values,df['high'].values,df['low'].values,df['close'].values,
+                                  df['volume'].values,df['vwap'].values,df['returns'].values,df['amount'].values,df['turn'].values,df['tcap'].values,df['mcap'].values]).T
+                data = [tuple(d.tolist()) for d in data]
 
                 stocktype = np.dtype([
                     ('date', 'uint64'), ('open', 'float64'),

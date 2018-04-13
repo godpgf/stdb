@@ -115,6 +115,7 @@ def cal_market_data(stock_list):
     history_data = [(date[i], open[i], high[i], low[i], close[i], volume[i], vwap[i],returns[i], amount[i], 0, 0, 0) for i in xrange(len(date))]
     return np.array(history_data, dtype=stocktype)
 
+
 class StockData(object):
     def __init__(self, bar, market, industry, totals, earning_ratios = 0):
         self.bar = bar
@@ -123,10 +124,11 @@ class StockData(object):
         self.totals = totals
         self.earning_ratios = earning_ratios
 
-def download_stock_data(cache_path = "data"):
-    codeProxy = LocalCodeProxy(cache_path)
+
+def download_stock_data(cache_path = "data", is_offline = False):
+    codeProxy = LocalCodeProxy(cache_path, is_offline)
     codes = codeProxy.get_codes()
-    dataProxy = LocalDataProxy(cache_path)
+    dataProxy = LocalDataProxy(cache_path, is_offline)
 
     industry_map = {}
     markey_set = set()
@@ -202,9 +204,12 @@ def download_stock_data(cache_path = "data"):
 
 
 def refresh_stock_data(cache_path = "data"):
-    #TODO
-    pass
-
+    codeProxy = LocalCodeProxy(cache_path)
+    codes = codeProxy.get_codes()
+    dataProxy = LocalDataProxy(cache_path)
+    for index, row in codes.iterrows():
+        dataProxy.update_current_Data(row["code"])
+    download_stock_data(cache_path, is_offline=True)
 
 #TODO delete later
 #------------------------------------------------------------

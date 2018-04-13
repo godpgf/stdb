@@ -18,43 +18,35 @@ class LocalDataSource(object):
         right = self._trading_dates.searchsorted(end_date, side='right')
         return self._trading_dates[left:right]
 
-    def get_all_bars(self, order_book_id, trading_calender_int = None):
-        history_data = None
+    def insert_current_2_history(self, history_data, order_book_id, trading_calender_int = None, is_update_cur_data = False):
         cur_data = None
-        if len(order_book_id) == 7:
-            history_data = get_history_data(order_book_id, trading_calender_int)
-            if history_data and trading_calender_int is not None:
+        if history_data and len(history_data) > 0:
+            if trading_calender_int is not None:
                 cid = trading_calender_int.searchsorted(1000000 * history_data[0][0])
                 if cid < len(trading_calender_int) -1:
                     next_date = trading_calender_int[cid+1] / 1000000
                     cur_data = get_current_data(order_book_id)
                     close = history_data[0][4]
-                    turn = history_data[0][9]
+                    #turn = history_data[0][9]
                     tcap = history_data[0][10]
                     mcap = history_data[0][11]
                     if cur_data and cur_data[0] != history_data[0][0]:
                         #打上下一天数据为空标记
                         if cur_data[0] > next_date:
                             history_data.insert(0,(
-                                next_date,close,close,close,close,0,0,0,0,0,tcap,mcap
+                                long(next_date), close, close, close, close,0,0,0,0,0,tcap,mcap
                             ))
                     else:
                         history_data.insert(0, (
-                            next_date, close, close, close, close, 0, 0, 0, 0,0,tcap,mcap
+                            long(next_date), close, close, close, close, 0, 0, 0, 0,0,tcap,mcap
                         ))
-
-
-
+                elif is_update_cur_data:
+                    history_data.pop(0)
+                    cur_data = get_current_data(order_book_id)
             else:
                 cur_data = get_current_data(order_book_id)
-
         else:
-            #history_data = get_ts_history_data(order_book_id)
-            #cur_data = get_ts_current_data(order_book_id)
-            raise NotImplementedError()
-
-        if history_data is None or len(history_data) == 0:
-            return None
+            return
 
         if cur_data is not None and cur_data[0] != history_data[0][0]:
             close = history_data[0][4]
@@ -65,6 +57,19 @@ class LocalDataSource(object):
             cur_data = (cur_data[0],cur_data[1],cur_data[2],cur_data[3],cur_data[4],cur_data[5],
                         cur_data[6],cur_data[7],cur_data[8],turn,tcap,mcap)
             history_data.insert(0, cur_data)
+
+    def get_all_bars(self, order_book_id, trading_calender_int = None, is_update_cur_data = False):
+        if len(order_book_id) == 7:
+            history_data = get_history_data(order_book_id, trading_calender_int)
+            self.insert_current_2_history(history_data, order_book_id, trading_calender_int, is_update_cur_data)
+        else:
+            #history_data = get_ts_history_data(order_book_id)
+            #cur_data = get_ts_current_data(order_book_id)
+            raise NotImplementedError()
+        return self.history_2_bars(history_data)
+
+
+    def history_2_bars(self, history_data):
         stocktype = np.dtype([
             ('date', 'uint64'), ('open', 'float64'),
             ('high', 'float64'), ('low', 'float64'),
@@ -75,11 +80,6 @@ class LocalDataSource(object):
         ])
         bars = np.array(history_data,dtype=stocktype)
         bars = bars[::-1]#转向
-        #bars = bars.astype([
-        #    ('date', 'uint64'), ('open', 'float64'),
-        #    ('high', 'float64'), ('low', 'float64'),
-        #    ('close', 'float64'), ('volume', 'float64'),
-        #])
         date_col = bars["date"]
         date_col[:] = 1000000 * date_col
 
@@ -90,9 +90,6 @@ class LocalDataSource(object):
         rise_col[:] = rise_col / (self.RISE_SCALE * 100.)
         turn_col = bars['turn']
         turn_col[:] = turn_col / (self.RISE_SCALE * 100.)
-        # if len(bars["close"]) >= 2:
-        #     rice_col[-1] = (bars["close"][-1]-bars["close"][-2]) * self.RISE_SCALE / bars["close"][-2] * 100
-        # rice_col[:] = 1 / (self.RISE_SCALE*100) * rice_col
 
         return bars
 

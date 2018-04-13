@@ -93,6 +93,37 @@ class LocalDataProxy(DataProxy):
             trading_calender_int <= convert_date_to_int(datetime.date.today())]
 
 
+    def update_current_Data(self, order_book_id):
+        assert not self._is_offline and self._cache_path
+        cache_path = self._cache_path[order_book_id] if isinstance(self._cache_path, dict) else self._cache_path
+        path = '%s/%s.csv' % (cache_path, order_book_id)
+
+        if os.path.exists(path) is False:
+            return False
+        df = pd.read_csv(path)
+        data = np.array(
+            [df['date'].values / 1000000, df['open'].values * 1000, df['high'].values * 1000, df['low'].values * 1000, df['close'].values * 1000,
+            df['volume'].values , df['vwap'].values * 1000, df['returns'].values * 100 * 10000, df['amount'].values, df['turn'].values * 100 * 10000,
+            df['tcap'].values, df['mcap'].values]).T
+        data = data.astype(long)
+        data = [tuple(d.tolist()) for d in data]
+        data.reverse()
+        self._data_source.insert_current_2_history(data,order_book_id,self.trading_calender_int, True)
+        bars = self._data_source.history_2_bars(data)
+        if bars is None:
+            return None
+        if cache_path:
+            if os.path.exists(cache_path) is False:
+                os.makedirs(cache_path)
+            df = pd.DataFrame({"date": bars["date"], "open": bars["open"], "high": bars["high"], "low": bars["low"],
+                               "close": bars["close"], "volume": bars["volume"],
+                               "vwap": bars["vwap"], "returns": bars["returns"], "amount": bars["amount"],
+                               "turn": bars["turn"], "tcap": bars["tcap"], "mcap": bars["mcap"]},
+                              columns=["date", "open", "high", "low", "close", "volume", "vwap", "returns", "amount",
+                                       "turn", "tcap", "mcap"])
+            df.to_csv(path, index=False)
+
+
     def get_all_Data(self, order_book_id):
         try:
             bars = self._cache[order_book_id]

@@ -1,9 +1,10 @@
 #coding=utf-8
 #author=godpgf
-
+import time
 from stdb import *
-cp = LocalCodeProxy('test',True)
-cp.get_codes()
-fun_accesser = LocalFundamentalProxy('test',False)
-info = fun_accesser.report_info('000001',2015,1)
-print(info)
+print time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time()))
+#dp = LocalDataProxy('data')
+#d = dp.get_all_Data('1000602')
+#refresh_stock_data()
+download_stock_data()
+print time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time()))

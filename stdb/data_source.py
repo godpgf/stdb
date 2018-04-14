@@ -41,8 +41,11 @@ class LocalDataSource(object):
                             long(next_date), close, close, close, close, 0, 0, 0, 0,0,tcap,mcap
                         ))
                 elif is_update_cur_data:
-                    history_data.pop(0)
                     cur_data = get_current_data(order_book_id)
+                    if cur_data and cur_data[5] > history_data[0][5]:
+                        history_data.pop(0)
+                    else:
+                        cur_data =  None
             else:
                 cur_data = get_current_data(order_book_id)
         else:
@@ -61,6 +64,8 @@ class LocalDataSource(object):
     def get_all_bars(self, order_book_id, trading_calender_int = None, is_update_cur_data = False):
         if len(order_book_id) == 7:
             history_data = get_history_data(order_book_id, trading_calender_int)
+            if history_data is None:
+                return None
             self.insert_current_2_history(history_data, order_book_id, trading_calender_int, is_update_cur_data)
         else:
             #history_data = get_ts_history_data(order_book_id)

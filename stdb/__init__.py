@@ -207,8 +207,12 @@ def refresh_stock_data(cache_path = "data"):
     codeProxy = LocalCodeProxy(cache_path)
     codes = codeProxy.get_codes()
     dataProxy = LocalDataProxy(cache_path)
+    markey_set = set()
     for index, row in codes.iterrows():
         dataProxy.update_current_Data(row["code"])
+        markey_set.add(row["market"])
+    for market_code in markey_set:
+        dataProxy.get_all_Data(market_code)
     download_stock_data(cache_path, is_offline=True)
 
 #TODO delete later

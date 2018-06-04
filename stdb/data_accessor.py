@@ -81,7 +81,7 @@ class LocalDataProxy(DataProxy):
         self._data_source = LocalDataSource()
         self.trading_calender_int = None
         self.min_date = min_date
-        market_data = self.get_all_Data('0000001')
+        market_data = self.get_all_date('0000001')
         if market_data is None:
             return
         market_data = market_data[np.where(market_data['volume'] > 0)]
@@ -93,7 +93,7 @@ class LocalDataProxy(DataProxy):
             trading_calender_int <= convert_date_to_int(datetime.date.today())]
 
 
-    def update_current_Data(self, order_book_id):
+    def update_current_data(self, order_book_id):
         assert not self._is_offline and self._cache_path
         cache_path = self._cache_path[order_book_id] if isinstance(self._cache_path, dict) else self._cache_path
         path = '%s/%s.csv' % (cache_path, order_book_id)
@@ -105,7 +105,7 @@ class LocalDataProxy(DataProxy):
             [df['date'].values / 1000000, df['open'].values * 1000, df['high'].values * 1000, df['low'].values * 1000, df['close'].values * 1000,
             df['volume'].values , df['vwap'].values * 1000, df['returns'].values * 100 * 10000, df['amount'].values, df['turn'].values * 100 * 10000,
             df['tcap'].values, df['mcap'].values]).T
-        data = data.astype(long)
+        data = data.astype(int)
         data = [tuple(d.tolist()) for d in data]
         data.reverse()
         self._data_source.insert_current_2_history(data,order_book_id,self.trading_calender_int, True)
@@ -124,7 +124,7 @@ class LocalDataProxy(DataProxy):
             df.to_csv(path, index=False)
 
 
-    def get_all_Data(self, order_book_id):
+    def get_all_date(self, order_book_id):
         try:
             bars = self._cache[order_book_id]
         except KeyError:
@@ -175,11 +175,11 @@ class LocalDataProxy(DataProxy):
             days = self._trading_days[order_book_id]
             return days
         except KeyError:
-            self.get_all_Data(order_book_id)
+            self.get_all_date(order_book_id)
             return self.get_trading_days(order_book_id)
 
     def get_table(self, order_book_id):
-        bars = self.get_all_Data(order_book_id).copy()
+        bars = self.get_all_date(order_book_id).copy()
         def int2date(date):
             from .data_reader import _2str
             year = int(date / 10000)
@@ -193,7 +193,7 @@ class LocalDataProxy(DataProxy):
 
 
     def get_bar(self, order_book_id, dt):
-        bars = self.get_all_Data(order_book_id)
+        bars = self.get_all_date(order_book_id)
 
         if isinstance(dt, string_types):
             dt = pd.Timestamp(dt)
@@ -205,7 +205,7 @@ class LocalDataProxy(DataProxy):
         if frequency == '1m':
             raise RuntimeError('Minute bar not supported yet!')
 
-        bars = self.get_all_Data(order_book_id)
+        bars = self.get_all_date(order_book_id)
 
         dt = convert_date_to_int(dt)
 
@@ -270,7 +270,7 @@ class LocalDataProxy(DataProxy):
 
         midpend_bars = np.zeros(len(midpend_date), dtype=bars.dtype)
         bars_index = bars["date"].searchsorted(midpend_date[0])
-        for i in xrange(len(midpend_bars)):
+        for i in range(len(midpend_bars)):
             if bars[bars_index]["date"] == midpend_date[i]:
                 midpend_bars[i] = bars[bars_index]
                 bars_index += 1

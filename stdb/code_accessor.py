@@ -4,8 +4,8 @@
 import os
 import abc
 from six import with_metaclass
-import numpy as np
 import pandas as pd
+import numpy as np
 from .data_reader import *
 
 
@@ -41,7 +41,7 @@ class LocalCodeProxy(CodeProxy):
                 market_list = []
                 for code in codes:
                     if code in industry:
-                        industry_list.append(industry[code].encode('UTF8'))
+                        industry_list.append(industry[code])
                     else:
                         industry_list.append("其他")
                     if code[0] == '0':

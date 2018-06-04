@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 import six
-from data_reader import *
+from .data_reader import *
 
 
 class LocalDataSource(object):
@@ -34,11 +34,11 @@ class LocalDataSource(object):
                         #打上下一天数据为空标记
                         if cur_data[0] > next_date:
                             history_data.insert(0,(
-                                long(next_date), close, close, close, close,0,0,0,0,0,tcap,mcap
+                                int(next_date), close, close, close, close,0,0,0,0,0,tcap,mcap
                             ))
                     else:
                         history_data.insert(0, (
-                            long(next_date), close, close, close, close, 0, 0, 0, 0,0,tcap,mcap
+                            int(next_date), close, close, close, close, 0, 0, 0, 0,0,tcap,mcap
                         ))
                 elif is_update_cur_data:
                     cur_data = get_current_data(order_book_id)

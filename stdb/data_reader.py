@@ -1,21 +1,17 @@
-﻿
-import string
-import datetime,time
-import numpy as np
-import urllib2
+﻿import string
+import time
+import urllib
 import socket
 import json
 import re
-
-import tushare as ts
 
 
 #返回所有股票码，0开头是上证，1开头是深证
 def get_all_stock_code():
     url = "http://quotes.money.163.com/hs/service/diyrank.php?page=0&count=3000&sort=PERCENT&order=desc&query=STYPE:EQA&fields=CODE,PRICE,TCAP,MCAP,PE,TURNOVER"
     try:
-        response = urllib2.urlopen(url)
-        html = response.read().decode('GB2312')
+        response = urllib.request.urlopen(url)
+        html = response.read().decode('gb2312', 'ignore')
         data = json.loads(html)["list"]
         codes = []
         price = []
@@ -23,25 +19,25 @@ def get_all_stock_code():
         pe = []
         for d in data :
             #代码、价格、总市值、PE
-            codes.append(d["CODE"].encode('UTF8'))
+            codes.append(d["CODE"])
             price.append(d["PRICE"])
             cap.append(d["TCAP"])
             pe.append(d["PE"] if "PE" in d else 0)
         return codes,price,cap,pe
-    except urllib2.HTTPError,e:
-        print e.code
+    except urllib.error.HTTPError as e:
+        print(e.code)
         return None
 
 
 def date2long(date):
     tmp = date.split('-')
-    return string.atol(tmp[0]) * 10000 + string.atol(tmp[1]) * 100 + string.atol(tmp[2])
+    return int(tmp[0]) * 10000 + int(tmp[1]) * 100 + int(tmp[2])
 
 
 def long2date(date):
-    year = long(date / 10000)
-    month = long((date - year * 10000) / 100)
-    day = long(date - year * 10000 - month * 100)
+    year = int(date / 10000)
+    month = int((date - year * 10000) / 100)
+    day = int(date - year * 10000 - month * 100)
     return '%s%s%s'%('%d'%year,_2str(month),_2str(day))
 
 
@@ -57,11 +53,11 @@ def get_history_data(code, trading_calender_int = None, retry_count=3,  timeout 
     url = 'http://quotes.money.163.com/service/chddata.html?code='+code+'&start=%d&end='%(19910403 if trading_calender_int is None else trading_calender_int[1] / 1000000)+time.strftime("%Y%m%d")+ '&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;VOTURNOVER;VATURNOVER;TURNOVER;TCAP;MCAP'
     #url = 'http://quotes.money.163.com/service/chddata.html?code='+code+'&start=20100403&end='+time.strftime("%Y%m%d")+ '&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;VOTURNOVER;VATURNOVER'
 
-    for _ in xrange(retry_count):
+    for _ in range(retry_count):
         time.sleep(pause)
         try:
-            response = urllib2.urlopen(url, timeout=timeout)
-            html = response.read().decode('latin1').encode('UTF8')
+            response = urllib.request.urlopen(url, timeout=timeout)
+            html = response.read().decode('gb2312', 'ignore')
             table = html.split('\r\n')
             if len(table) < 3:
                 return None
@@ -71,7 +67,7 @@ def get_history_data(code, trading_calender_int = None, retry_count=3,  timeout 
                 if table[i].find('None') != -1:
                     continue
                 line = table[i].split(',')
-                if string.atoi(line[10]) == 0:
+                if int(line[10]) == 0:
                     continue
                 if len(line[12]) == 0:
                     line[12] = '0'
@@ -79,17 +75,17 @@ def get_history_data(code, trading_calender_int = None, retry_count=3,  timeout 
                     line[14] = '0'
                 data = (
                     date2long(line[0]),#date
-                    long(string.atof(line[6])*1000),#open
-                    long(string.atof(line[4])*1000),#high
-                    long(string.atof(line[5])*1000),#low
-                    long(string.atof(line[3])*1000),#close
-                    string.atol(line[10]),#volume
-                    long(string.atof(line[11])/string.atol(line[10])*1000),#vwap
-                    long(string.atof(line[9])*10000),#rise
-                    long(float(line[11])),#amount
-                    long(string.atof(line[12])*10000),#turn
-                    long(float(line[13])),#tcap
-                    long(float(line[14])),#mcap
+                    int(float(line[6])*1000),#open
+                    int(float(line[4])*1000),#high
+                    int(float(line[5])*1000),#low
+                    int(float(line[3])*1000),#close
+                    int(line[10]),#volume
+                    int(float(line[11])/int(line[10])*1000),#vwap
+                    int(float(line[9])*10000),#rise
+                    int(float(line[11])),#amount
+                    int(float(line[12])*10000),#turn
+                    int(float(line[13])),#tcap
+                    int(float(line[14])),#mcap
                 )
 
                 if trading_calender_int is not None and len(stocks) > 0:
@@ -111,14 +107,14 @@ def get_history_data(code, trading_calender_int = None, retry_count=3,  timeout 
                     #在最远一条数据打上以后缺失标记
                     data = (trading_calender_int[cid-1] / 1000000,stocks[-1][1],stocks[-1][1],stocks[-1][1],stocks[-1][1],0,0,0,0,0,stocks[-1][10],stocks[-1][11])
                     stocks.append(data)
-            print code
+            print(code)
             return stocks
-        except urllib2.HTTPError,e:
-            print e.code
-        except socket.error, e:
-            print e.message
-        except urllib2.URLError, e:
-            print e.message
+        except urllib.error.HTTPError as e:
+            print(e.code)
+        except socket.error as e:
+            print(e)
+        except urllib.error.URLError as e:
+            print(e.reason)
         else:
             break
     return None
@@ -144,30 +140,30 @@ def get_current_data(code, retry_count=3, pause=0.01):
     for _ in range(retry_count):
         time.sleep(pause)
         try:
-            response = urllib2.urlopen(url)
-            html = response.read().decode('latin1').encode('UTF8')
+            response = urllib.request.urlopen(url)
+            html = response.read().decode('GBK')
             line = html.split(',')
             if len(line) < 2 or line[8] == '0':
                 return None
             data = (
                 date2long(line[30]),#date
-                long(string.atof(line[1])*1000),#open
-                long(string.atof(line[4])*1000),#high
-                long(string.atof(line[5])*1000),#low
-                long(string.atof(line[3])*1000),#close
-                string.atol(line[8]),#volume
-                long(string.atof(line[9])/string.atol(line[8])*1000),#vwap
-                long((string.atof(line[3]) - string.atof(line[2]))/string.atof(line[2])*100 * 10000),#rise
-                long(float(line[9])),#amount
+                int(float(line[1])*1000),#open
+                int(float(line[4])*1000),#high
+                int(float(line[5])*1000),#low
+                int(float(line[3])*1000),#close
+                int(line[8]),#volume
+                int(float(line[9])/int(line[8])*1000),#vwap
+                int((float(line[3]) - float(line[2]))/float(line[2])*100 * 10000),#rise
+                int(float(line[9])),#amount
                 0,0,0
             )
             return data
-        except urllib2.HTTPError, e:
-            print e.message
+        except urllib.error.HTTPError as e:
+            print(e.reason)
             return None
-        except urllib2.URLError, e:
-            print url
-            print e.message
+        except urllib.error.URLError as e:
+            print(url)
+            print(e.reason)
             return None
         else:
             break
@@ -181,9 +177,9 @@ def _get_detail(tag, retry_count=3, pause=0.001):
             time.sleep(pause)
             try:
                 url = "http://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeData?page=1&num=1000&sort=symbol&asc=1&node=%s&symbol=&_s_r_a=page" %tag
-                response = urllib2.urlopen(url)
+                response = urllib.request.urlopen(url)
                 text = response.read().decode('GBK')#.encode('UTF8')
-            except urllib2.HTTPError,e:
+            except urllib.error.HTTPError as e:
                 pass
             else:
                 break
@@ -204,8 +200,8 @@ def get_industry():
     url = "http://vip.stock.finance.sina.com.cn/q/view/newSinaHy.php"
     try:
         industry_dict = {}
-        response = urllib2.urlopen(url)
-        html = response.read().decode('GBK').encode('UTF8')
+        response = urllib.request.urlopen(url)
+        html = response.read().decode('gb2312', 'ignore')
         data_str = html.split('=')[1]
         data_json = json.loads(data_str)
         for row in data_json.values():
@@ -215,8 +211,8 @@ def get_industry():
             for code in code_list:
                 industry_dict[code] = industry_value
         return industry_dict
-    except urllib2.HTTPError,e:
-        print e.code
+    except urllib.error.HTTPError as e:
+        print(e.code)
         return None
 
 
@@ -224,8 +220,8 @@ def get_concept():
     url = "http://money.finance.sina.com.cn/q/view/newFLJK.php?param=class"
     try:
         concept_dict = {}
-        response = urllib2.urlopen(url)
-        html = response.read().decode('GBK').encode('UTF8')
+        response = urllib.request.urlopen(url)
+        html = response.read().decode('gb2312', 'ignore')
         data_str = html.split('=')[1]
         data_json = json.loads(data_str)
         for row in data_json.values():
@@ -235,79 +231,7 @@ def get_concept():
             for code in code_list:
                 concept_dict[code] = concept_value
         return concept_dict
-    except urllib2.HTTPError,e:
-        print e.code
+    except urllib.error.HTTPError as e:
+        print(e.code)
         return None
 
-"""
-def get_ts_history_data(code):
-    his = ts.get_hist_data(code)
-    stocks = []
-    for d in his.index:
-        values = his.loc[d]
-        data = (
-            #date2int(d.strftime('%Y-%m-%d')),
-            date2int(d),
-            int(values['open']*1000),
-            int(values['high']*1000),
-            int(values['low']*1000),
-            int(values['close']*1000),
-            int(values['volume']),
-            0
-        )
-        stocks.append(data)
-    return stocks
-
-
-def get_ts_current_data(code):
-    cur = ts.get_realtime_quotes(code);
-    data = (
-        date2int(cur['date'].real[0]),
-        int(string.atof(cur['open'].real[0])*1000),
-        int(string.atof(cur['high'].real[0])*1000),
-        int(string.atof(cur['low'].real[0])*1000),
-        int(string.atof(cur['price'].real[0])*1000),
-        int(string.atoi(cur['volume'].real[0])),
-        0,
-    )
-    return data
-"""
-
-def get_ts_base_info():
-    return ts.get_stock_basics()
-
-def get_ts_concept():
-    concept = ts.get_concept_classified()
-    concept_dict = {}
-    for index, row in concept.iterrows():
-        concept_dict[row['code']] = row['c_name']
-    return concept_dict
-
-def get_ts_industry():
-    industry = ts.get_industry_classified()
-    industry_dict = {}
-    for index, row in industry.iterrows():
-        industry_dict[row['code']] = row['c_name']
-    return industry_dict
-
-def get_ts_report_info(year, quarter):
-    return ts.get_report_data(year, quarter)
-
-
-def get_ts_profit_info(year, quarter):
-    return ts.get_profit_data(year, quarter)
-
-
-def get_ts_operation_info(year, quarter):
-    return ts.get_operation_data(year, quarter)
-
-
-def get_ts_growth_info(year, quarter):
-    return ts.get_growth_data(year, quarter)
-
-
-def get_ts_debtpaying_info(year, quarter):
-    return ts.get_debtpaying_data(year, quarter)
-
-def get_ts_cashflow_info(year, quarter):
-    return ts.get_cashflow_data(year, quarter)

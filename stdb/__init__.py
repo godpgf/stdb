@@ -2,8 +2,6 @@
 #author=godpgf
 from .data_accessor import LocalDataProxy
 from .code_accessor import LocalCodeProxy
-from .fundamental_accessor import LocalFundamentalProxy
-from .classified_accessor import LocalClassifiedProxy
 import numpy as np
 import pandas as pd
 
@@ -17,7 +15,7 @@ def cal_market_data(stock_list):
         all_weight += cup
         weight_list.append(cup)
     if all_weight > 0:
-        for i in xrange(len(weight_list)):
+        for i in range(len(weight_list)):
             weight_list[i] /= all_weight
 
     date = []
@@ -32,7 +30,7 @@ def cal_market_data(stock_list):
 
     day_len = len(stock_list[0].bar)
     yestoday_is_use = [False] * len(stock_list)
-    for i in xrange(day_len):
+    for i in range(day_len):
         openPrice = 0
         highPrice = 0
         lowPrice = 0
@@ -47,7 +45,7 @@ def cal_market_data(stock_list):
         if i > 0:
             #先用昨天有数据今天还有数据的股票计算出今天的开盘价
             lastOpenPrice = 0
-            for j in xrange(len(stock_list)):
+            for j in range(len(stock_list)):
                 if yestoday_is_use[j] and stock_list[j].bar[i][5] > 0:
                     lastOpenPrice += stock_list[j].bar[i-1][1] * weight_list[j]
                     openPrice += stock_list[j].bar[i][1] * weight_list[j]
@@ -61,7 +59,7 @@ def cal_market_data(stock_list):
 
 
         #计算为了得到这个开盘价所需要的缩放
-        for j in xrange(len(stock_list)):
+        for j in range(len(stock_list)):
             yestoday_is_use[j] = False
             if stock_list[j].bar[i][5] > 0:
                 openPrice += stock_list[j].bar[i][1] * weight_list[j]
@@ -112,7 +110,7 @@ def cal_market_data(stock_list):
         ('amount','float64'), ('turn', 'float64'),
         ('tcap', 'float64'), ('mcap', 'float64')
     ])
-    history_data = [(date[i], open[i], high[i], low[i], close[i], volume[i], vwap[i],returns[i], amount[i], 0, 0, 0) for i in xrange(len(date))]
+    history_data = [(date[i], open[i], high[i], low[i], close[i], volume[i], vwap[i],returns[i], amount[i], 0, 0, 0) for i in range(len(date))]
     return np.array(history_data, dtype=stocktype)
 
 
@@ -142,7 +140,7 @@ def download_stock_data(cache_path = "data", is_offline = False):
     days = []
 
     for index, row in codes.iterrows():
-        data = dataProxy.get_all_Data(row["code"])
+        data = dataProxy.get_all_date(row["code"])
         if data is not None and len(data) > 0:
             code_list.append(row["code"])
             price.append(row["price"])
@@ -152,7 +150,7 @@ def download_stock_data(cache_path = "data", is_offline = False):
             markey_set.add(row['market'])
             industry.append(row["industry"])
             days.append(dataProxy.get_trading_days(row["code"]))
-            dataProxy.get_all_Data(row["market"])
+            dataProxy.get_all_date(row["market"])
             if row["industry"] not in industry_map:
                 industry_map[row["industry"]] = list()
             industry_map[row["industry"]].append(StockData(data,
@@ -184,7 +182,7 @@ def download_stock_data(cache_path = "data", is_offline = False):
         df.to_csv("%s/%s.csv"%(cache_path,key),index=False)
 
     for market_code in markey_set:
-        data = dataProxy.get_all_Data(market_code)
+        data = dataProxy.get_all_date(market_code)
         code_list.append(market_code)
         price.append(data['close'][-1])
         cap.append(None)
@@ -212,64 +210,5 @@ def refresh_stock_data(cache_path = "data"):
         dataProxy.update_current_Data(row["code"])
         markey_set.add(row["market"])
     for market_code in markey_set:
-        dataProxy.get_all_Data(market_code)
+        dataProxy.get_all_date(market_code)
     download_stock_data(cache_path, is_offline=True)
-
-#TODO delete later
-#------------------------------------------------------------
-
-
-
-
-
-def cal_all_market_data(stock_dict, is_industry):
-    market_list_dict = {}
-    for key, value in stock_dict.items():
-        cl_type = value.industry if is_industry else value.concept
-        if cl_type not in market_list_dict:
-            market_list_dict[cl_type] = list()
-        market_list_dict[cl_type].append(value)
-
-    market_dict = {}
-    for key, value in market_list_dict.items():
-        market_dict[key] = StockData(cal_market_data(value), None, None, None, 0, 0)
-    return market_dict
-
-
-def load_all_stock_flat(codeProxy, dataProxy, classifiedProxy):
-    codes = codeProxy.get_codes()
-
-    market_dict = {
-        # 数据、市场、分类、概念、发行量
-        "sh":StockData(dataProxy.get_all_Data('0000001'), None, None, None, 0, 0),
-        "sz":StockData(dataProxy.get_all_Data('1399001'), None, None, None, 0, 0),
-    }
-
-    stock_size = 0
-    stock_dict = {}
-    for code in codes:
-        data = dataProxy.get_all_Data(code[0])
-        if data is not None:
-            totals = int(code[2] / code[1])
-            earning_ratios = code[3] / code[1]
-            industry = classifiedProxy.industry_info(code[0])
-            concept = classifiedProxy.concept_info(code[0])
-            if industry is None or len(industry) == 0:
-                industry = u'[其他行业]'
-            else:
-                industry = u'[%s]'%industry.encode('utf8')
-            if concept is None or len(concept) == 0:
-                concept = u'(其他概念)'
-            else:
-                concept = u'(%s)'%concept.encode('utf8')
-            if code[0][0] == '0':
-                market = 'sh'
-            else:
-                market = 'sz'
-
-            stock_dict[code[0]] = StockData(data, market, industry, concept, totals, earning_ratios)
-            stock_size += 1
-
-    industry_dict = cal_all_market_data(stock_dict, True)
-    concept_dict = cal_all_market_data(stock_dict, False)
-    return stock_dict, market_dict, industry_dict, concept_dict

@@ -11,7 +11,7 @@ except ImportError: # for pip <= 9.0.3
 
 setup(
     name='stdb',
-    version='0.0.1',
+    version='0.0.2',
     description='Stock Data Engine',
     packages=find_packages(exclude=[]),
     author='godpgf',

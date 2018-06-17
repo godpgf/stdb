@@ -51,7 +51,7 @@ class LocalDataSource(object):
         else:
             return
 
-        if cur_data is not None and cur_data[0] != history_data[0][0]:
+        if cur_data is not None and cur_data[0] > history_data[0][0]:
             close = history_data[0][4]
             volume = history_data[0][5]
             turn = history_data[0][9] * (0 if volume == 0 else cur_data[5] / volume)

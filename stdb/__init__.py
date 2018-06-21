@@ -207,7 +207,7 @@ def refresh_stock_data(cache_path = "data"):
     dataProxy = LocalDataProxy(cache_path)
     markey_set = set()
     for index, row in codes.iterrows():
-        dataProxy.update_current_Data(row["code"])
+        dataProxy.update_current_data(row["code"])
         markey_set.add(row["market"])
     for market_code in markey_set:
         dataProxy.get_all_date(market_code)

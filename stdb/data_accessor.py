@@ -81,7 +81,7 @@ class LocalDataProxy(DataProxy):
         self._data_source = LocalDataSource()
         self.trading_calender_int = None
         self.min_date = min_date
-        market_data = self.get_all_date('0000001')
+        market_data = self.get_all_data('0000001')
         if market_data is None:
             return
         market_data = market_data[np.where(market_data['volume'] > 0)]
@@ -124,7 +124,7 @@ class LocalDataProxy(DataProxy):
             df.to_csv(path, index=False)
 
 
-    def get_all_date(self, order_book_id):
+    def get_all_data(self, order_book_id):
         try:
             bars = self._cache[order_book_id]
         except KeyError:
@@ -175,11 +175,11 @@ class LocalDataProxy(DataProxy):
             days = self._trading_days[order_book_id]
             return days
         except KeyError:
-            self.get_all_date(order_book_id)
+            self.get_all_data(order_book_id)
             return self.get_trading_days(order_book_id)
 
     def get_table(self, order_book_id):
-        bars = self.get_all_date(order_book_id).copy()
+        bars = self.get_all_data(order_book_id).copy()
         def int2date(date):
             from .data_reader import _2str
             year = int(date / 10000)
@@ -193,7 +193,7 @@ class LocalDataProxy(DataProxy):
 
 
     def get_bar(self, order_book_id, dt):
-        bars = self.get_all_date(order_book_id)
+        bars = self.get_all_data(order_book_id)
 
         if isinstance(dt, string_types):
             dt = pd.Timestamp(dt)
@@ -205,7 +205,7 @@ class LocalDataProxy(DataProxy):
         if frequency == '1m':
             raise RuntimeError('Minute bar not supported yet!')
 
-        bars = self.get_all_date(order_book_id)
+        bars = self.get_all_data(order_book_id)
 
         dt = convert_date_to_int(dt)
 

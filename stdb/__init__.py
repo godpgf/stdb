@@ -140,7 +140,7 @@ def download_stock_data(cache_path = "data", is_offline = False):
     days = []
 
     for index, row in codes.iterrows():
-        data = dataProxy.get_all_date(row["code"])
+        data = dataProxy.get_all_data(row["code"])
         if data is not None and len(data) > 0:
             code_list.append(row["code"])
             price.append(row["price"])
@@ -150,7 +150,7 @@ def download_stock_data(cache_path = "data", is_offline = False):
             markey_set.add(row['market'])
             industry.append(row["industry"])
             days.append(dataProxy.get_trading_days(row["code"]))
-            dataProxy.get_all_date(row["market"])
+            dataProxy.get_all_data(row["market"])
             if row["industry"] not in industry_map:
                 industry_map[row["industry"]] = list()
             industry_map[row["industry"]].append(StockData(data,
@@ -182,7 +182,7 @@ def download_stock_data(cache_path = "data", is_offline = False):
         df.to_csv("%s/%s.csv"%(cache_path,key),index=False)
 
     for market_code in markey_set:
-        data = dataProxy.get_all_date(market_code)
+        data = dataProxy.get_all_data(market_code)
         code_list.append(market_code)
         price.append(data['close'][-1])
         cap.append(None)
@@ -210,5 +210,5 @@ def refresh_stock_data(cache_path = "data"):
         dataProxy.update_current_data(row["code"])
         markey_set.add(row["market"])
     for market_code in markey_set:
-        dataProxy.get_all_date(market_code)
+        dataProxy.get_all_data(market_code)
     download_stock_data(cache_path, is_offline=True)

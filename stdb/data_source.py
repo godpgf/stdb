@@ -61,9 +61,9 @@ class LocalDataSource(object):
                         cur_data[6],cur_data[7],cur_data[8],turn,tcap,mcap)
             history_data.insert(0, cur_data)
 
-    def get_all_bars(self, order_book_id, trading_calender_int = None, is_update_cur_data = False):
+    def get_all_bars(self, order_book_id, trading_calender_int = None, is_update_cur_data = False, min_date = '19910403'):
         if len(order_book_id) == 7:
-            history_data = get_history_data(order_book_id, trading_calender_int)
+            history_data = get_history_data(order_book_id, trading_calender_int, min_date=min_date)
             if history_data is None:
                 return None
             self.insert_current_2_history(history_data, order_book_id, trading_calender_int, is_update_cur_data)

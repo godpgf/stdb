@@ -123,10 +123,10 @@ class StockData(object):
         self.earning_ratios = earning_ratios
 
 
-def download_stock_data(cache_path = "data", is_offline = False):
+def download_stock_data(cache_path = "data", is_offline = False, min_date = "2012-01-01"):
     codeProxy = LocalCodeProxy(cache_path, is_offline)
     codes = codeProxy.get_codes()
-    dataProxy = LocalDataProxy(cache_path, is_offline)
+    dataProxy = LocalDataProxy(cache_path, is_offline, min_date)
 
     industry_map = {}
     markey_set = set()

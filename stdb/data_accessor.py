@@ -151,7 +151,7 @@ class LocalDataProxy(DataProxy):
                 ])
                 bars = np.array(data, dtype=stocktype)
             else:
-                bars = self._data_source.get_all_bars(order_book_id, self.trading_calender_int)
+                bars = self._data_source.get_all_bars(order_book_id, self.trading_calender_int, min_date=self.min_date.replace('-',''))
                 if bars is None:
                     return None
                 if cache_path:

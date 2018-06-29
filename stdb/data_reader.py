@@ -49,8 +49,8 @@ def _2str(date):
 
 
 #返回某只股票的所有历史数据
-def get_history_data(code, trading_calender_int = None, retry_count=3,  timeout = 10, pause = 0.01):
-    url = 'http://quotes.money.163.com/service/chddata.html?code='+code+'&start=%d&end='%(19910403 if trading_calender_int is None else trading_calender_int[1] / 1000000)+time.strftime("%Y%m%d")+ '&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;VOTURNOVER;VATURNOVER;TURNOVER;TCAP;MCAP'
+def get_history_data(code, trading_calender_int = None, min_date = '19910403', retry_count=3,  timeout = 10, pause = 0.01):
+    url = 'http://quotes.money.163.com/service/chddata.html?code='+code+'&start=%s&end='%(min_date if trading_calender_int is None else trading_calender_int[1] / 1000000)+time.strftime("%Y%m%d")+ '&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;VOTURNOVER;VATURNOVER;TURNOVER;TCAP;MCAP'
     #url = 'http://quotes.money.163.com/service/chddata.html?code='+code+'&start=20100403&end='+time.strftime("%Y%m%d")+ '&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;VOTURNOVER;VATURNOVER'
 
     for _ in range(retry_count):

@@ -204,12 +204,18 @@ def get_industry():
         html = response.read().decode('gb2312', 'ignore')
         data_str = html.split('=')[1]
         data_json = json.loads(data_str)
+        industry_value_2_type = {}
+        type_cnt = 0
         for row in data_json.values():
             industry_tag = row.split(',')[0]
             industry_value = row.split(',')[1]
             code_list = _get_detail(industry_tag)
+            if industry_value not in industry_value_2_type:
+                industry_value_2_type[industry_value] = "type%d"%type_cnt
+                type_cnt += 1
             for code in code_list:
-                industry_dict[code] = industry_value
+                industry_dict[code] = industry_value_2_type[industry_value]
+
         return industry_dict
     except urllib.error.HTTPError as e:
         print(e.code)

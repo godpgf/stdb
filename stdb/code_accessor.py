@@ -43,7 +43,7 @@ class LocalCodeProxy(CodeProxy):
                     if code in industry:
                         industry_list.append(industry[code])
                     else:
-                        industry_list.append("其他")
+                        industry_list.append("other")
                     if code[0] == '0':
                         market_list.append('0000001')
                     else:

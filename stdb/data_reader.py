@@ -8,7 +8,7 @@ import re
 
 #返回所有股票码，0开头是上证，1开头是深证
 def get_all_stock_code():
-    url = "http://quotes.money.163.com/hs/service/diyrank.php?page=0&count=3000&sort=PERCENT&order=desc&query=STYPE:EQA&fields=CODE,PRICE,TCAP,MCAP,PE,TURNOVER"
+    url = "http://quotes.money.163.com/hs/service/diyrank.php?page=0&count=5000&sort=PERCENT&order=desc&query=STYPE:EQA&fields=CODE,PRICE,TCAP,MCAP,PE,TURNOVER"
     try:
         response = urllib.request.urlopen(url)
         html = response.read().decode('gb2312', 'ignore')

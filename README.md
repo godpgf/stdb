@@ -37,9 +37,11 @@ codeProxy = LocalCodeProxy()
 ```
 ####得到股票码和当前最新价格
 ```python
-#得到第一只股票的股票码
-codeProxy.get_codes()[0][0]
-#得到第三只股票的当前价
-codeProxy.get_codes()[3][1]
+#get all stock
+codes = codeProxy.get_codes()
+#enum all stock
+for index, row in codes.iterrows():
+    print(row["code"])
+    print(row["price"])
 ```
 

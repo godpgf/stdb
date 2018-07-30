@@ -11,7 +11,7 @@ dataProxy = LocalDataProxy()
 ####得到所有历史数据
 ```python
 #第一个0表示上证指数
-dataProxy.get_table('0000001')
+dataProxy.get_table('1399005')
 ```
 ####得到2016-5-5往前600个交易日的所有收盘数据
 ```python

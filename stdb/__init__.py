@@ -4,6 +4,7 @@ from .data_accessor import LocalDataProxy
 from .code_accessor import LocalCodeProxy
 import numpy as np
 import pandas as pd
+import os
 
 
 def cal_market_data(stock_list):
@@ -212,3 +213,30 @@ def refresh_stock_data(cache_path = "data"):
     for market_code in markey_set:
         dataProxy.get_all_data(market_code)
     download_stock_data(cache_path, is_offline=True)
+
+def download_industry(code_list, market_code, path):
+    if not os.path.exists(path):
+        os.mkdir(path)
+    dataProxy = LocalDataProxy(path)
+    price = []
+    cap = []
+    pe = []
+    market = []
+    industry = []
+    days = []
+    for code in code_list:
+        data = dataProxy.get_all_data(code)
+        price.append(data['close'][-1])
+        cap.append(None)
+        pe.append(None)
+        market.append(market_code)
+        industry.append(None)
+        days.append(dataProxy.get_trading_days(code))
+    pd.DataFrame({"code": np.array(code_list),
+                  "price": np.array(price),
+                  "cap": np.array(cap),
+                  "pe": np.array(pe),
+                  "market": np.array(market),
+                  "industry": np.array(industry),
+                  "days":np.array(days)},
+                 columns=["code", "market", "industry", "price", "cap", "pe", "days"]).to_csv('%s/%s.csv' % (path, 'codes'), index=False)

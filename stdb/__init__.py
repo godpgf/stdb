@@ -214,10 +214,10 @@ def refresh_stock_data(cache_path = "data"):
         dataProxy.get_all_data(market_code)
     download_stock_data(cache_path, is_offline=True)
 
-def download_industry(code_list, market_code, path):
+def download_industry(code_list, market_code, path, min_date="2008-06-30"):
     if not os.path.exists(path):
         os.mkdir(path)
-    dataProxy = LocalDataProxy(path)
+    dataProxy = LocalDataProxy(path, min_date=min_date)
     price = []
     cap = []
     pe = []
@@ -232,6 +232,16 @@ def download_industry(code_list, market_code, path):
         market.append(market_code)
         industry.append(None)
         days.append(dataProxy.get_trading_days(code))
+
+    if market_code:
+        data = dataProxy.get_all_data(market_code)
+        code_list.append(market_code)
+        price.append(data['close'][-1])
+        cap.append(None)
+        pe.append(None)
+        market.append(market_code)
+        industry.append(None)
+        days.append(dataProxy.get_trading_days(market_code))
     pd.DataFrame({"code": np.array(code_list),
                   "price": np.array(price),
                   "cap": np.array(cap),

@@ -214,7 +214,7 @@ def refresh_stock_data(cache_path = "data"):
         dataProxy.get_all_data(market_code)
     download_stock_data(cache_path, is_offline=True)
 
-def download_industry(code_list, market_code, path, min_date="2008-06-30"):
+def download_industry(code_list, market_code, path, min_date="2005-09-01"):
     if not os.path.exists(path):
         os.mkdir(path)
     dataProxy = LocalDataProxy(path, min_date=min_date)

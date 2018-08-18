@@ -164,7 +164,7 @@ class LocalDataProxy(DataProxy):
 
             min_date_int = date2long(self.min_date)*1000000
             self._trading_days[order_book_id] = len(bars['date'])
-            bars = bars[np.where(bars['date'] > min_date_int)]
+            bars = bars[np.where(bars['date'] >= min_date_int)]
             bars = self._fill_all_bars(bars)
             self._cache[order_book_id] = bars
 

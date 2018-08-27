@@ -230,7 +230,7 @@ def download_industry(code_list, market_code, path, min_date="2005-09-01"):
         cap.append(None)
         pe.append(None)
         market.append(market_code)
-        industry.append(None)
+        industry.append(market_code)
         days.append(dataProxy.get_trading_days(code))
 
     if market_code:

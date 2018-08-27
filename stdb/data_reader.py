@@ -4,6 +4,10 @@ import urllib
 import socket
 import json
 import re
+try:
+    from urllib.request import urlopen, Request
+except ImportError:
+    from urllib2 import urlopen, Request
 
 
 #返回所有股票码，0开头是上证，1开头是深证
@@ -167,6 +171,44 @@ def get_current_data(code, retry_count=3, pause=0.01):
             return None
         else:
             break
+
+#返回股票最近数据，弥补历史数据缺失的问题
+def get_near_data(code, retry_count=3, pause=0.01):
+    code = _163_2_sina(code)
+    url = 'http://api.finance.ifeng.com/akdaily/?code=%s&type=last'%code
+    for _ in range(retry_count):
+        time.sleep(pause)
+        try:
+            request = Request(url)
+            lines = urlopen(request, timeout = 10).read()
+            if len(lines) < 15: #no data
+                return None
+        except Exception as e:
+            print(e)
+        else:
+            data_list = []
+            js = json.loads(lines.decode('utf-8'))
+            cols = ['date', 'open', 'high', 'close', 'low', 'volume', 'price_change', 'p_change',
+                         'ma5', 'ma10', 'ma20', 'v_ma5', 'v_ma10', 'v_ma20']
+            lines = js['record']
+            pre_close = None
+            for id, line in enumerate(lines):
+                data = (
+                    date2long(line[0]),  # date
+                    int(float(line[1]) * 1000),  # open
+                    int(float(line[2]) * 1000),  # high
+                    int(float(line[4]) * 1000),  # low
+                    int(float(line[3]) * 1000),  # close
+                    int(float(line[5])),  # volume
+                    int((float(line[3]) + float(line[2]) + float(line[4])) / 3 * 1000),  # vwap
+                    int((float(line[3]) - pre_close) / pre_close * 100 * 10000 if pre_close else 1 * 100 * 10000),  # rise
+                    int(float(line[5]) * (float(line[3]) + float(line[2]) + float(line[4])) / 3),  # amount
+                    0, 0, 0
+                )
+                pre_close = float(line[3])
+                data_list.append(data)
+            data_list.reverse()
+            return data_list
 
 def _get_detail(tag, retry_count=3, pause=0.001):
     p = 0

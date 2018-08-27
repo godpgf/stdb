@@ -24,7 +24,7 @@ class LocalDataSource(object):
             if trading_calender_int is not None:
                 cid = trading_calender_int.searchsorted(1000000 * history_data[0][0])
                 if cid < len(trading_calender_int) -1:
-                    next_date = trading_calender_int[cid+1] / 1000000
+                    next_date = int(trading_calender_int[cid+1] / 1000000)
                     cur_data = get_current_data(order_book_id)
                     close = history_data[0][4]
                     #turn = history_data[0][9]
@@ -33,9 +33,20 @@ class LocalDataSource(object):
                     if cur_data and cur_data[0] != history_data[0][0]:
                         #打上下一天数据为空标记
                         if cur_data[0] > next_date:
-                            history_data.insert(0,(
-                                int(next_date), close, close, close, close,0,0,0,0,0,tcap,mcap
-                            ))
+                            near_data = get_near_data(order_book_id)
+                            is_loss_next_data = True
+                            if near_data:
+                                for data in near_data:
+                                    if data[0] == next_date:
+                                        is_loss_next_data = False
+                                        history_data.insert(0,(
+                                            int(next_date), data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8], data[9], tcap, mcap
+                                        ))
+                                        print("%s loss near data %d"%(order_book_id, next_date))
+                            if is_loss_next_data:
+                                history_data.insert(0,(
+                                    int(next_date), close, close, close, close,0,0,0,0,0,tcap,mcap
+                                ))
                     else:
                         history_data.insert(0, (
                             int(next_date), close, close, close, close, 0, 0, 0, 0,0,tcap,mcap

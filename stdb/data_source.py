@@ -69,7 +69,7 @@ class LocalDataSource(object):
             #将价格变成复权价
             fuquan_price = get_sina_fuquan_price(order_book_id)
             scale = 1
-            if fuquan_price is not None:
+            if fuquan_price is not None and history_data is not None:
                 fuquan_price.reverse()
                 history_data.reverse()
                 price_index = 0

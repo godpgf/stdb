@@ -24,10 +24,7 @@ def cal_market_data(stock_list):
     high = []
     low = []
     close = []
-    vwap = []
     volume = []
-    returns = []
-    amount = []
 
     day_len = len(stock_list[0].bar)
     yestoday_is_use = [False] * len(stock_list)
@@ -37,9 +34,6 @@ def cal_market_data(stock_list):
         lowPrice = 0
         closePrice = 0
         volumeValue = 0
-        vwapPrice = 0
-        returnsValue = 0
-        amountValue = 0
 
         #先计算今天的开盘
         realOpenPrice = None
@@ -68,9 +62,6 @@ def cal_market_data(stock_list):
                 lowPrice += stock_list[j].bar[i][3] * weight_list[j]
                 closePrice += stock_list[j].bar[i][4] * weight_list[j]
                 volumeValue += stock_list[j].bar[i][5] * weight_list[j]
-                vwapPrice += stock_list[j].bar[i][6] * weight_list[j]
-                returnsValue += stock_list[j].bar[i][7] * weight_list[j]
-                amountValue += stock_list[j].bar[i][8] * weight_list[j]
                 yestoday_is_use[j] = True
 
         if realOpenPrice:
@@ -79,8 +70,6 @@ def cal_market_data(stock_list):
                 highPrice = close[i-1]
                 lowPrice = close[i-1]
                 closePrice = close[i-1]
-                vwapPrice = 0
-                returnsValue = 0
             else:
                 k = realOpenPrice / openPrice
                 openPrice *= k
@@ -88,9 +77,6 @@ def cal_market_data(stock_list):
                 lowPrice *= k
                 closePrice *= k
                 volumeValue *= k
-                vwapPrice *= k
-                returnsValue = (closePrice - close[i-1]) / close[i-1]
-                amountValue *= k
 
         date.append( stock_list[0].bar[i][0] )
         open.append( openPrice )
@@ -98,20 +84,15 @@ def cal_market_data(stock_list):
         low.append( lowPrice )
         close.append( closePrice )
         volume.append( volumeValue )
-        vwap.append( vwapPrice )
-        returns.append( returnsValue )
-        amount.append(amountValue)
 
 
     stocktype = np.dtype([
         ('date', 'uint64'), ('open', 'float64'),
         ('high', 'float64'), ('low', 'float64'),
         ('close', 'float64'), ('volume', 'float64'),
-        ('vwap', 'float64'), ('returns', 'float64'),
-        ('amount','float64'), ('turn', 'float64'),
-        ('tcap', 'float64'), ('mcap', 'float64')
+        ('turn', 'float64')
     ])
-    history_data = [(date[i], open[i], high[i], low[i], close[i], volume[i], vwap[i],returns[i], amount[i], 0, 0, 0) for i in range(len(date))]
+    history_data = [(date[i], open[i], high[i], low[i], close[i], volume[i], 0) for i in range(len(date))]
     return np.array(history_data, dtype=stocktype)
 
 
@@ -167,12 +148,7 @@ def download_stock_data(cache_path = "data", is_offline = False, min_date = "201
                            "low":data["low"],
                            "close":data["close"],
                            "volume":data["volume"],
-                           "vwap":data["vwap"],
-                           "returns":data["returns"],
-                           "amount":data["amount"],
-                           "turn":data["turn"],
-                           "tcap":data["tcap"],
-                           "mcap":data["mcap"]}, columns=["date","open","high","low","close","volume","vwap","returns","amount","turn","tcap","mcap"])
+                           "turn":data["turn"]}, columns=["date","open","high","low","close","volume","turn"])
         code_list.append(key)
         price.append(data["close"][-1])
         cap.append(None)

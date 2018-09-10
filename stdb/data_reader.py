@@ -1,4 +1,5 @@
-﻿import string
+﻿import requests
+import datetime
 import time
 import urllib
 import socket
@@ -23,7 +24,7 @@ def get_all_stock_code():
         pe = []
         for d in data :
             #代码、价格、总市值、PE
-            codes.append(d["CODE"])
+            codes.append(d["CODE"][1:])
             price.append(d["PRICE"])
             cap.append(d["TCAP"])
             pe.append(d["PE"] if "PE" in d else 0)
@@ -52,11 +53,122 @@ def _2str(date):
         return '0%d'%date
 
 
-#返回某只股票的所有历史数据
-def get_history_data(code, trading_calender_int = None, min_date = '19910403', retry_count=3,  timeout = 10, pause = 0.01):
-    url = 'http://quotes.money.163.com/service/chddata.html?code='+code+'&start=%s&end='%(min_date if trading_calender_int is None else int(trading_calender_int[1] / 1000000))+time.strftime("%Y%m%d")+ '&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;VOTURNOVER;VATURNOVER;TURNOVER;TCAP;MCAP'
-    #url = 'http://quotes.money.163.com/service/chddata.html?code='+code+'&start=20100403&end='+time.strftime("%Y%m%d")+ '&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;VOTURNOVER;VATURNOVER'
+def get_xueqiu_data(code, trading_calender_int = None, min_date = '19910403', retry_count=3,  timeout = 10, pause = 0.01, fuquan = 'before'):
+    def time_transfer_timeStamp(time_str):
+        timeArray = time.strptime(time_str, "%Y-%m-%d %H:%M:%S")
+        timeStamp = int(time.mktime(timeArray))
+        return str(timeStamp)
 
+    def time_transfer_string(time_str):
+        data = time.mktime(time.strptime(time_str, "%a %b %d %H:%M:%S +0800 %Y"))
+        return str(datetime.fromtimestamp(data))[0:10]
+
+    s = requests.session()
+    s.header = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
+
+    start_date = min_date if trading_calender_int is None else str(int(trading_calender_int[1] / 1000000))
+    start_time_tmp = start_date[0:4] + '-' + start_date[4:6] + '-' + start_date[6:] + ' 00:00:00'
+    end_date = time.strftime("%Y%m%d")
+    end_time_tmp = end_date[0:4] + '-' + end_date[4:6] + '-' + end_date[6:] + ' 15:30:00'
+    if code[0:2] == '60' or code[0:4] == '0000':
+        code = 'SH' + code
+    else:
+        code = 'SZ' + code
+
+
+    start_time = time_transfer_timeStamp(start_time_tmp) + '000'
+    end_time = time_transfer_timeStamp(end_time_tmp) + '000'
+    for _ in range(retry_count):
+        time.sleep(pause)
+        try:
+            s.get('https://xueqiu.com/')
+            url = 'https://xueqiu.com/stock/forchartk/stocklist.json?symbol=' + code + '&period=1day&type=' + fuquan + '&begin=' + start_time + '&end=' + end_time + '&_=' + end_time
+            r = s.get(url,timeout=timeout)
+            print(r.text)
+            table = r.text.split('[{')[1][0:-3].split('},{')
+            stocks = []
+            for i in range(len(table)-1, -1, -1):
+                a = table[i]
+                openp = float(a.split(',')[1].split(':')[1]) * 1000
+                closep = float(a.split(',')[3].split(':')[1]) * 1000
+                highp = float(a.split(',')[2].split(':')[1]) * 1000
+                lowp = float(a.split(',')[4].split(':')[1]) * 1000
+                volume = float(a.split(',')[0].split(':')[1])
+                turnrate = float(a.split(',')[7].split(':')[1]) * 10000
+
+                shijian_xueqiu = a.split(',')[-1].split('":"')[1][0:-1]
+                c = time.mktime(time.strptime(shijian_xueqiu, "%a %b %d %H:%M:%S +0800 %Y"))
+                time_tmp = datetime.datetime.fromtimestamp(c).strftime("%Y-%m-%d")
+                date = date2long(time_tmp)
+                data = (date, int(openp), int(highp), int(lowp), int(closep), int(volume), int(turnrate))
+                if trading_calender_int is not None and len(stocks) > 0:
+                    cid = trading_calender_int.searchsorted(1000000 * data[0])
+                    if cid < len(trading_calender_int) - 1:
+                        next_date = trading_calender_int[cid + 1] / 1000000
+                        #在下一条数据打上缺失标记
+                        assert stocks[-1][0] >= next_date
+                        if stocks[-1][0] > next_date:
+                            stocks.append((next_date,data[4],data[4],data[4],data[4],0,0))
+
+                stocks.append(data)
+            if len(stocks) == 0:
+                return None
+            if trading_calender_int is not None:
+                cid = trading_calender_int.searchsorted(1000000 * stocks[-1][0])
+                assert cid < len(trading_calender_int)
+                if cid > 0:
+                    #在最远一条数据打上以后缺失标记
+                    data = (trading_calender_int[cid-1] / 1000000,stocks[-1][1],stocks[-1][1],stocks[-1][1],stocks[-1][1],0,0)
+                    stocks.append(data)
+            print(code)
+            return stocks
+        except Exception as e:
+            print(e)
+        else:
+            break
+    return None
+
+#得到某个股票复权价
+def get_sina_fuquan_price(code, type = 'qianfuquan', retry_count=3,  timeout = 10, pause = 0.01):
+    if code[0:2] == '60' or code[0:4] == '0000':
+        code = 'sh' + code
+    else:
+        code = 'sz' + code
+    url = 'http://finance.sina.com.cn/realstock/company/%s/%s.js?d=%s'%(code, type, time.strftime("%Y-%m-%d"))
+    for _ in range(retry_count):
+        time.sleep(pause)
+        try:
+            response = urllib.request.urlopen(url)
+            html = response.read().decode('GBK')
+            table = html.split(':{')[1].split('}}]')[0].split(',')
+            if table is None or len(table) == 0:
+                return None
+            price_list = []
+            for line in table:
+                tmp = line.split(':')
+                date = date2long(tmp[0][1:].replace('_','-'))
+                price = int(float(tmp[1].replace('"','')) * 1000)
+                price_list.append((date, price))
+            return price_list
+        except urllib.error.HTTPError as e:
+            # print(e.reason)
+            return None
+        except urllib.error.URLError as e:
+            print(url)
+            print(e.reason)
+            return None
+        else:
+            break
+
+
+#返回某只股票的所有历史数据
+def get_163_data(code, trading_calender_int = None, min_date = '19910403', retry_count=3,  timeout = 10, pause = 0.01):
+    #url = 'http://quotes.money.163.com/service/chddata.html?code='+code+'&start=20100403&end='+time.strftime("%Y%m%d")+ '&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;VOTURNOVER;VATURNOVER'
+    if code[0:2] == '60' or code[0:4] == '0000':
+        code = '0' + code
+    else:
+        code = '1' + code
+    url = 'http://quotes.money.163.com/service/chddata.html?code='+code+'&start=%s&end='%(min_date if trading_calender_int is None else int(trading_calender_int[1] / 1000000))+time.strftime("%Y%m%d")+ '&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;VOTURNOVER;VATURNOVER;TURNOVER;TCAP;MCAP'
     for _ in range(retry_count):
         time.sleep(pause)
         try:
@@ -84,12 +196,7 @@ def get_history_data(code, trading_calender_int = None, min_date = '19910403', r
                     int(float(line[5])*1000),#low
                     int(float(line[3])*1000),#close
                     int(line[10]),#volume
-                    int(float(line[11])/int(line[10])*1000),#vwap
-                    int(float(line[9])*10000),#rise
-                    int(float(line[11])),#amount
                     int(float(line[12])*10000),#turn
-                    int(float(line[13])),#tcap
-                    int(float(line[14])),#mcap
                 )
 
                 if trading_calender_int is not None and len(stocks) > 0:
@@ -99,7 +206,7 @@ def get_history_data(code, trading_calender_int = None, min_date = '19910403', r
                         #在下一条数据打上缺失标记
                         assert stocks[-1][0] >= next_date
                         if stocks[-1][0] > next_date:
-                            stocks.append((next_date,data[4],data[4],data[4],data[4],0,0,0,0,0,data[10],data[11]))
+                            stocks.append((next_date,data[4],data[4],data[4],data[4],0,0))
 
                 stocks.append(data)
             if len(stocks) == 0:
@@ -109,7 +216,7 @@ def get_history_data(code, trading_calender_int = None, min_date = '19910403', r
                 assert cid < len(trading_calender_int)
                 if cid > 0:
                     #在最远一条数据打上以后缺失标记
-                    data = (trading_calender_int[cid-1] / 1000000,stocks[-1][1],stocks[-1][1],stocks[-1][1],stocks[-1][1],0,0,0,0,0,stocks[-1][10],stocks[-1][11])
+                    data = (trading_calender_int[cid-1] / 1000000,stocks[-1][1],stocks[-1][1],stocks[-1][1],stocks[-1][1],0,0)
                     stocks.append(data)
             print(code)
             return stocks
@@ -123,23 +230,13 @@ def get_history_data(code, trading_calender_int = None, min_date = '19910403', r
             break
     return None
 
-def _sina_2_163(code):
-    if code[1] == 'h':
-        code = '0' + code[2:]
-    else :
-        code = '1' + code[2:]
-    return code
-
-def _163_2_sina(code):
-    if code[0] == '0':
-        code = 'sh' + code[1:]
-    else :
-        code = 'sz' + code[1:]
-    return code
 
 #返回某只股票的当前数据
 def get_current_data(code, retry_count=3, pause=0.01):
-    code = _163_2_sina(code)
+    if code[0:2] == '60' or code[0:4] == '0000':
+        code = 'sh' + code
+    else:
+        code = 'sz' + code
     url='http://hq.sinajs.cn/list=' + code
     for _ in range(retry_count):
         time.sleep(pause)
@@ -156,10 +253,7 @@ def get_current_data(code, retry_count=3, pause=0.01):
                 int(float(line[5])*1000),#low
                 int(float(line[3])*1000),#close
                 int(line[8]),#volume
-                int(float(line[9])/int(line[8])*1000),#vwap
-                int((float(line[3]) - float(line[2]))/float(line[2])*100 * 10000),#rise
-                int(float(line[9])),#amount
-                0,0,0
+                0
             )
             return data
         except urllib.error.HTTPError as e:
@@ -173,8 +267,11 @@ def get_current_data(code, retry_count=3, pause=0.01):
             break
 
 #返回股票最近数据，弥补历史数据缺失的问题
-def get_near_data(code, retry_count=3, pause=0.01):
-    code = _163_2_sina(code)
+def get_ifeng_data(code, retry_count=3, pause=0.01):
+    if code[0:2] == '60' or code[0:4] == '0000':
+        code = 'sh' + code
+    else:
+        code = 'sz' + code
     url = 'http://api.finance.ifeng.com/akdaily/?code=%s&type=last'%code
     for _ in range(retry_count):
         time.sleep(pause)
@@ -200,10 +297,7 @@ def get_near_data(code, retry_count=3, pause=0.01):
                     int(float(line[4]) * 1000),  # low
                     int(float(line[3]) * 1000),  # close
                     int(float(line[5])),  # volume
-                    int((float(line[3]) + float(line[2]) + float(line[4])) / 3 * 1000),  # vwap
-                    int((float(line[3]) - pre_close) / pre_close * 100 * 10000 if pre_close else 1 * 100 * 10000),  # rise
-                    int(float(line[5]) * (float(line[3]) + float(line[2]) + float(line[4])) / 3),  # amount
-                    0, 0, 0
+                    0
                 )
                 pre_close = float(line[3])
                 data_list.append(data)
@@ -235,7 +329,8 @@ def _get_detail(tag, retry_count=3, pause=0.001):
         js = json.loads(js)
         pars = js['pars']
         for p in pars:
-            code_list.append(_sina_2_163(p["symbol"]))
+            code = p["symbol"]
+            code_list.append(code[2:])
         return code_list
 
 def get_industry():

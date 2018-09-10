@@ -10,13 +10,12 @@ dataProxy = LocalDataProxy()
 
 ### 得到所有历史数据
 ```python
-#第一个0表示上证指数
-dataProxy.get_table('1399005')
+dataProxy.get_table('399005')
 ```
 ### 得到2016-5-5往前600个交易日的所有收盘数据
 ```python
 #close、open、low、high、volume、vwap、returns
-dataProxy.history('0000001',pd.Timestamp('2016-5-5'),600,'1d','close').values
+dataProxy.history('000001',pd.Timestamp('2016-5-5'),600,'1d','close').values
 ```
 
 ### 取得数据时顺带保存到本地

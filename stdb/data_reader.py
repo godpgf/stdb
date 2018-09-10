@@ -218,7 +218,7 @@ def get_163_data(code, trading_calender_int = None, min_date = '19910403', retry
                     #在最远一条数据打上以后缺失标记
                     data = (trading_calender_int[cid-1] / 1000000,stocks[-1][1],stocks[-1][1],stocks[-1][1],stocks[-1][1],0,0)
                     stocks.append(data)
-            print(code)
+            print(code[1:])
             return stocks
         except urllib.error.HTTPError as e:
             print(e.code)

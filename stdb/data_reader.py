@@ -130,7 +130,7 @@ def get_xueqiu_data(code, trading_calender_int = None, min_date = '19910403', re
 
 #得到某个股票复权价
 def get_sina_fuquan_price(code, type = 'qianfuquan', retry_count=3,  timeout = 10, pause = 0.01):
-    if code[0:2] == '60' or code[0:4] == '0000':
+    if code[0:2] == '60' or code[0:5] == '00000':
         code = 'sh' + code
     else:
         code = 'sz' + code
@@ -164,7 +164,7 @@ def get_sina_fuquan_price(code, type = 'qianfuquan', retry_count=3,  timeout = 1
 #返回某只股票的所有历史数据
 def get_163_data(code, trading_calender_int = None, min_date = '19910403', retry_count=3,  timeout = 10, pause = 0.01):
     #url = 'http://quotes.money.163.com/service/chddata.html?code='+code+'&start=20100403&end='+time.strftime("%Y%m%d")+ '&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;VOTURNOVER;VATURNOVER'
-    if code[0:2] == '60' or code[0:4] == '0000':
+    if code[0:2] == '60' or code[0:5] == '00000':
         code = '0' + code
     else:
         code = '1' + code
@@ -233,7 +233,7 @@ def get_163_data(code, trading_calender_int = None, min_date = '19910403', retry
 
 #返回某只股票的当前数据
 def get_current_data(code, retry_count=3, pause=0.01):
-    if code[0:2] == '60' or code[0:4] == '0000':
+    if code[0:2] == '60' or code[0:5] == '00000':
         code = 'sh' + code
     else:
         code = 'sz' + code
@@ -268,7 +268,7 @@ def get_current_data(code, retry_count=3, pause=0.01):
 
 #返回股票最近数据，弥补历史数据缺失的问题
 def get_ifeng_data(code, retry_count=3, pause=0.01):
-    if code[0:2] == '60' or code[0:4] == '0000':
+    if code[0:2] == '60' or code[0:5] == '00000':
         code = 'sh' + code
     else:
         code = 'sz' + code

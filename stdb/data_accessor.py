@@ -81,7 +81,7 @@ class LocalDataProxy(DataProxy):
         self._data_source = LocalDataSource()
         self.trading_calender_int = None
         self.min_date = min_date
-        market_data = self.get_all_data('000001')
+        market_data = self.get_all_data('sh000001')
         if market_data is None:
             return
         market_data = market_data[np.where(market_data['volume'] > 0)]

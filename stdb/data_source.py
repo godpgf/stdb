@@ -64,7 +64,7 @@ class LocalDataSource(object):
             history_data.insert(0, cur_data)
 
     def get_all_bars(self, order_book_id, trading_calender_int = None, is_update_cur_data = False, min_date = '19910403'):
-        if len(order_book_id) == 6:
+        if len(order_book_id) == 6 or len(order_book_id) == 8:
             history_data = get_163_data(order_book_id, trading_calender_int, min_date=min_date)
             #将价格变成复权价
             fuquan_price = get_sina_fuquan_price(order_book_id)

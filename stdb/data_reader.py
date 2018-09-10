@@ -12,23 +12,19 @@ except ImportError:
 
 
 #返回所有股票码，0开头是上证，1开头是深证
-def get_all_stock_code():
-    url = "http://quotes.money.163.com/hs/service/diyrank.php?page=0&count=5000&sort=PERCENT&order=desc&query=STYPE:EQA&fields=CODE,PRICE,TCAP,MCAP,PE,TURNOVER"
+def get_163_stock_code():
+    url = "http://quotes.money.163.com/hs/service/diyrank.php?page=0&count=6000"
     try:
         response = urllib.request.urlopen(url)
         html = response.read().decode('gb2312', 'ignore')
         data = json.loads(html)["list"]
         codes = []
         price = []
-        cap = []
-        pe = []
         for d in data :
             #代码、价格、总市值、PE
             codes.append(d["CODE"][1:])
             price.append(d["PRICE"])
-            cap.append(d["TCAP"])
-            pe.append(d["PE"] if "PE" in d else 0)
-        return codes,price,cap,pe
+        return codes,price
     except urllib.error.HTTPError as e:
         print(e.code)
         return None
@@ -70,8 +66,12 @@ def get_xueqiu_data(code, trading_calender_int = None, min_date = '19910403', re
     start_time_tmp = start_date[0:4] + '-' + start_date[4:6] + '-' + start_date[6:] + ' 00:00:00'
     end_date = time.strftime("%Y%m%d")
     end_time_tmp = end_date[0:4] + '-' + end_date[4:6] + '-' + end_date[6:] + ' 15:30:00'
-    if code[0:2] == '60' or code[0:4] == '0000':
+    if code[0:2] == '60':
         code = 'SH' + code
+    elif code[0:2] == 'sh':
+        code = 'SH' + code[2:]
+    elif code[0:2] == 'sz':
+        code = "SZ" + code[2:]
     else:
         code = 'SZ' + code
 
@@ -130,8 +130,10 @@ def get_xueqiu_data(code, trading_calender_int = None, min_date = '19910403', re
 
 #得到某个股票复权价
 def get_sina_fuquan_price(code, type = 'qianfuquan', retry_count=3,  timeout = 10, pause = 0.01):
-    if code[0:2] == '60' or code[0:5] == '00000':
+    if code[0:2] == '60':
         code = 'sh' + code
+    if code[0:2] == 'sh' or code[0:2] == 'sz':
+        pass
     else:
         code = 'sz' + code
     url = 'http://finance.sina.com.cn/realstock/company/%s/%s.js?d=%s'%(code, type, time.strftime("%Y-%m-%d"))
@@ -164,8 +166,12 @@ def get_sina_fuquan_price(code, type = 'qianfuquan', retry_count=3,  timeout = 1
 #返回某只股票的所有历史数据
 def get_163_data(code, trading_calender_int = None, min_date = '19910403', retry_count=3,  timeout = 10, pause = 0.01):
     #url = 'http://quotes.money.163.com/service/chddata.html?code='+code+'&start=20100403&end='+time.strftime("%Y%m%d")+ '&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;VOTURNOVER;VATURNOVER'
-    if code[0:2] == '60' or code[0:5] == '00000':
+    if code[0:2] == '60':
         code = '0' + code
+    elif code[0:2] == 'sh':
+        code = '0' + code[2:]
+    elif code[0:2] == 'sz':
+        code = '1' + code[2:]
     else:
         code = '1' + code
     url = 'http://quotes.money.163.com/service/chddata.html?code='+code+'&start=%s&end='%(min_date if trading_calender_int is None else int(trading_calender_int[1] / 1000000))+time.strftime("%Y%m%d")+ '&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;VOTURNOVER;VATURNOVER;TURNOVER;TCAP;MCAP'
@@ -233,8 +239,10 @@ def get_163_data(code, trading_calender_int = None, min_date = '19910403', retry
 
 #返回某只股票的当前数据
 def get_current_data(code, retry_count=3, pause=0.01):
-    if code[0:2] == '60' or code[0:5] == '00000':
+    if code[0:2] == '60':
         code = 'sh' + code
+    elif code[0:2] == 'sh' or code[0:2] == 'sz':
+        pass
     else:
         code = 'sz' + code
     url='http://hq.sinajs.cn/list=' + code
@@ -268,8 +276,10 @@ def get_current_data(code, retry_count=3, pause=0.01):
 
 #返回股票最近数据，弥补历史数据缺失的问题
 def get_ifeng_data(code, retry_count=3, pause=0.01):
-    if code[0:2] == '60' or code[0:5] == '00000':
+    if code[0:2] == '60':
         code = 'sh' + code
+    elif code[0:2] == 'sh' or code[0:2] == 'sz':
+        pass
     else:
         code = 'sz' + code
     url = 'http://api.finance.ifeng.com/akdaily/?code=%s&type=last'%code

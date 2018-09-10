@@ -97,7 +97,7 @@ def cal_market_data(stock_list):
 
 
 class StockData(object):
-    def __init__(self, bar, market, industry, totals, earning_ratios = 0):
+    def __init__(self, bar, market, industry, totals = 1, earning_ratios = 0):
         self.bar = bar
         self.market = market
         self.industry = industry
@@ -115,8 +115,6 @@ def download_stock_data(cache_path = "data", is_offline = False, min_date = "201
 
     code_list = []
     price = []
-    cap = []
-    pe = []
     market = []
     industry = []
     days = []
@@ -126,8 +124,6 @@ def download_stock_data(cache_path = "data", is_offline = False, min_date = "201
         if data is not None and len(data) > 0:
             code_list.append(row["code"])
             price.append(row["price"])
-            cap.append(row["cap"])
-            pe.append(row['pe'])
             market.append(row["market"])
             markey_set.add(row['market'])
             industry.append(row["industry"])
@@ -137,8 +133,7 @@ def download_stock_data(cache_path = "data", is_offline = False, min_date = "201
                 industry_map[row["industry"]] = list()
             industry_map[row["industry"]].append(StockData(data,
                                                            row['market'],
-                                                           row['industry'],
-                                                           float(row['cap'])/float(row['price'])))
+                                                           row['industry']))
 
     for key, value in industry_map.items():
         data = cal_market_data(value)
@@ -151,8 +146,7 @@ def download_stock_data(cache_path = "data", is_offline = False, min_date = "201
                            "turn":data["turn"]}, columns=["date","open","high","low","close","volume","turn"])
         code_list.append(key)
         price.append(data["close"][-1])
-        cap.append(None)
-        pe.append(None)
+
         market.append(None)
         industry.append(key)
         days.append(len(data["date"]))
@@ -162,20 +156,16 @@ def download_stock_data(cache_path = "data", is_offline = False, min_date = "201
         data = dataProxy.get_all_data(market_code)
         code_list.append(market_code)
         price.append(data['close'][-1])
-        cap.append(None)
-        pe.append(None)
         market.append(market_code)
         industry.append(None)
         days.append(dataProxy.get_trading_days(market_code))
 
     pd.DataFrame({"code": np.array(code_list),
                   "price": np.array(price),
-                  "cap": np.array(cap),
-                  "pe": np.array(pe),
                   "market": np.array(market),
                   "industry": np.array(industry),
                   "days":np.array(days)},
-                 columns=["code", "market", "industry", "price", "cap", "pe", "days"]).to_csv('%s/%s.csv' % (cache_path, 'codes'), index=False)
+                 columns=["code", "market", "industry", "price", "days"]).to_csv('%s/%s.csv' % (cache_path, 'codes'), index=False)
 
 
 def refresh_stock_data(cache_path = "data"):
@@ -195,16 +185,12 @@ def download_industry(code_list, market_code, path, min_date="2005-09-01"):
         os.mkdir(path)
     dataProxy = LocalDataProxy(path, min_date=min_date)
     price = []
-    cap = []
-    pe = []
     market = []
     industry = []
     days = []
     for code in code_list:
         data = dataProxy.get_all_data(code)
         price.append(data['close'][-1])
-        cap.append(None)
-        pe.append(None)
         market.append(market_code)
         industry.append(market_code)
         days.append(dataProxy.get_trading_days(code))
@@ -213,16 +199,12 @@ def download_industry(code_list, market_code, path, min_date="2005-09-01"):
         data = dataProxy.get_all_data(market_code)
         code_list.append(market_code)
         price.append(data['close'][-1])
-        cap.append(None)
-        pe.append(None)
         market.append(market_code)
         industry.append(None)
         days.append(dataProxy.get_trading_days(market_code))
     pd.DataFrame({"code": np.array(code_list),
                   "price": np.array(price),
-                  "cap": np.array(cap),
-                  "pe": np.array(pe),
                   "market": np.array(market),
                   "industry": np.array(industry),
                   "days":np.array(days)},
-                 columns=["code", "market", "industry", "price", "cap", "pe", "days"]).to_csv('%s/%s.csv' % (path, 'codes'), index=False)
+                 columns=["code", "market", "industry", "price", "days"]).to_csv('%s/%s.csv' % (path, 'codes'), index=False)

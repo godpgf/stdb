@@ -26,7 +26,7 @@ class LocalCodeProxy(CodeProxy):
         self._is_offline = False if cache_path is None else is_offline
         self._cache = None
 
-    def get_codes(self, market_code = '399005'):
+    def get_codes(self, market_code = 'sz399005'):
         if self._cache is None:
             if self._is_offline:
                 path = '%s/%s.csv'%(self._cache_path,'codes')
@@ -35,7 +35,7 @@ class LocalCodeProxy(CodeProxy):
                 #self._cache = np.fromfile(path, np.dtype('|S7'))
                 self._cache = pd.read_csv(path, dtype=str)
             else:
-                codes, price, cap, pe = get_all_stock_code()
+                codes, price= get_163_stock_code()
                 industry = get_industry()
                 industry_list = []
                 market_list = []
@@ -46,15 +46,13 @@ class LocalCodeProxy(CodeProxy):
                         industry_list.append("other")
                     if market_code is None:
                         if code[0:2] == '60':
-                            market_list.append('000001')
+                            market_list.append('sh000001')
                         else:
-                            market_list.append('399001')
+                            market_list.append('sz399001')
                     else:
                         market_list.append(market_code)
                 self._cache = pd.DataFrame({"code":np.array(codes),
                                             "price":np.array(price),
-                                            "cap":np.array(cap),
-                                            "pe":np.array(pe),
                                             "market":np.array(market_list),
                                             "industry":np.array(industry_list)},columns=["code","market","industry","price","cap","pe"])
                 if self._cache_path is not None:

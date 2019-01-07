@@ -18,52 +18,53 @@ class LocalDataSource(object):
         right = self._trading_dates.searchsorted(end_date, side='right')
         return self._trading_dates[left:right]
 
-    def insert_current_2_history(self, history_data, order_book_id, price_scale, trading_calender_int = None, is_update_cur_data = False):
-        cur_data = None
-        if history_data and len(history_data) > 0:
+    def insert_current_2_history(self, history_data, order_book_id, price_scale, trading_calender_int=None):
+        if history_data is not None and len(history_data) > 0:
+            fill_data = []
+            cur_data = get_current_data(order_book_id)
+            if cur_data and cur_data[0] > history_data[0][0]:
+                cur_data = (cur_data[0],cur_data[1] * price_scale,cur_data[2] * price_scale,cur_data[3]*price_scale,cur_data[4]*price_scale,cur_data[5],0)
+            else:
+                cur_data = None
+                # insert_stocks(fill_data, cur_data, trading_calender_int)
+
+            near_data = get_ifeng_data(order_book_id)
+            if cur_data is not None and near_data is not None and cur_data[0] == near_data[0][0]:
+                # near_data.pop(0)
+                cur_data = None
+
+            if cur_data is not None:
+                insert_stocks(fill_data, cur_data, trading_calender_int)
+
+            if near_data is not None and len(near_data) > 0:
+                for i in range(len(near_data)):
+                    if near_data[i][0] <= history_data[0][0]:
+                        near_data = near_data[:i]
+                        break
+                for data in near_data:
+                    # fill_data.append((data[0], data[1] * price_scale, data[2] * price_scale, data[3] * price_scale, data[4] * price_scale, data[5], data[6]))
+                    insert_stocks(fill_data, (data[0], data[1] * price_scale, data[2] * price_scale, data[3] * price_scale, data[4] * price_scale, data[5], data[6]), trading_calender_int)
+
+            if len(fill_data) > 0:
+                if trading_calender_int is not None:
+                    cid = trading_calender_int.searchsorted(1000000 * history_data[0][0])
+                    next_date = trading_calender_int[cid + 1] / 1000000
+                    if next_date < fill_data[-1][0]:
+                        close = history_data[0][4]
+                        fill_data.append((int(next_date), close, close, close, close, 0, 0))
+                fill_data.extend(history_data)
+                history_data = fill_data
+
             if trading_calender_int is not None:
                 cid = trading_calender_int.searchsorted(1000000 * history_data[0][0])
                 if cid < len(trading_calender_int) -1:
                     next_date = int(trading_calender_int[cid+1] / 1000000)
-                    cur_data = get_current_data(order_book_id)
                     close = history_data[0][4]
-                    if cur_data and cur_data[0] != history_data[0][0]:
-                        #打上下一天数据为空标记
-                        if cur_data[0] > next_date:
-                            near_data = get_ifeng_data(order_book_id)
-                            is_loss_next_data = True
-                            if near_data:
-                                for data in near_data:
-                                    if data[0] == next_date:
-                                        is_loss_next_data = False
-                                        history_data.insert(0,(
-                                            int(next_date), data[1] * price_scale, data[2] * price_scale, data[3] * price_scale, data[4] * price_scale, data[5], data[6]
-                                        ))
-                                        print("%s loss near data %d"%(order_book_id, next_date))
-                            if is_loss_next_data:
-                                history_data.insert(0,(
-                                    int(next_date), close, close, close, close,0,0
-                                ))
-                    else:
-                        history_data.insert(0, (
-                            int(next_date), close, close, close, close, 0, 0
-                        ))
-                elif is_update_cur_data:
-                    cur_data = get_current_data(order_book_id)
-                    if cur_data and cur_data[5] > history_data[0][5]:
-                        history_data.pop(0)
-                    else:
-                        cur_data =  None
-            else:
-                cur_data = get_current_data(order_book_id)
-        else:
-            return
+                    history_data.insert(0, (int(next_date), close, close, close, close, 0, 0))
 
-        if cur_data is not None and cur_data[0] > history_data[0][0]:
-            cur_data = (cur_data[0],cur_data[1] * price_scale,cur_data[2] * price_scale,cur_data[3]*price_scale,cur_data[4]*price_scale,cur_data[5],0)
-            history_data.insert(0, cur_data)
+        return history_data
 
-    def get_all_bars(self, order_book_id, trading_calender_int = None, is_update_cur_data = False, min_date = '19910403'):
+    def get_all_bars(self, order_book_id, trading_calender_int=None, min_date='19910403'):
         if len(order_book_id) == 6 or len(order_book_id) == 8:
             history_data = get_163_data(order_book_id, trading_calender_int, min_date=min_date)
             #将价格变成复权价
@@ -89,7 +90,7 @@ class LocalDataSource(object):
                 history_data.reverse()
             if history_data is None:
                 return None
-            self.insert_current_2_history(history_data, order_book_id, scale, trading_calender_int, is_update_cur_data)
+            history_data = self.insert_current_2_history(history_data, order_book_id, scale, trading_calender_int)
         else:
             #history_data = get_ts_history_data(order_book_id)
             #cur_data = get_ts_current_data(order_book_id)

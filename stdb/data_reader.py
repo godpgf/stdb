@@ -159,6 +159,10 @@ def get_sina_fuquan_price(code, type = 'qianfuquan', retry_count=3,  timeout = 1
             print(url)
             print(e.reason)
             return None
+        except ValueError as e:
+            print(url)
+            print(e)
+            return None
         else:
             break
 

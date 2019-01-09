@@ -122,13 +122,13 @@ class LocalDataProxy(DataProxy):
             df.to_csv(path, index=False)
 
 
-    def get_all_data(self, order_book_id):
+    def get_all_data(self, order_book_id, is_real_time=False):
         try:
             bars = self._cache[order_book_id]
         except KeyError:
             cache_path = self._cache_path[order_book_id] if isinstance(self._cache_path, dict) else self._cache_path
             path = '%s/%s.csv' % (cache_path, order_book_id)
-            if self._is_offline :
+            if self._is_offline:
                 if os.path.exists(path) is False:
                     return None
                 df = pd.read_csv(path)
@@ -145,7 +145,7 @@ class LocalDataProxy(DataProxy):
                 ])
                 bars = np.array(data, dtype=stocktype)
             else:
-                bars = self._data_source.get_all_bars(order_book_id, self.trading_calender_int, min_date=self.min_date.replace('-',''))
+                bars = self._data_source.get_all_bars(order_book_id, self.trading_calender_int, min_date=self.min_date.replace('-',''), is_real_time=is_real_time)
                 if bars is None:
                     return None
                 if cache_path:

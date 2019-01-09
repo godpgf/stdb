@@ -5,6 +5,7 @@ import urllib
 import socket
 import json
 import re
+import pandas as pd
 try:
     from urllib.request import urlopen, Request
 except ImportError:
@@ -29,6 +30,46 @@ def get_163_stock_code():
         print(e.code)
         return None
 
+DAY_TRADING_COLUMNS = ['code', 'symbol', 'name', 'changepercent',
+                       'trade', 'open', 'high', 'low', 'settlement', 'volume', 'turnoverratio',
+                       'amount', 'per', 'pb', 'mktcap', 'nmc']
+
+def _parsing_dayprice_json(types=None, page=1):
+    """
+           处理当日行情分页数据，格式为json
+     Parameters
+     ------
+        pageNum:页码
+     return
+     -------
+        DataFrame 当日所有股票交易数据(DataFrame)
+    """
+    request = Request( 'http://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeData?num=80&sort=code&asc=0&node=%s&symbol=&_s_r_a=page&page=%s' % (types, page))
+    text = urlopen(request, timeout=10).read()
+    if text == 'null':
+        return None
+    reg = re.compile(r'\,(.*?)\:')
+    text = reg.sub(r',"\1":', text.decode('gbk'))
+    text = text.replace('"{symbol', '{"symbol')
+    text = text.replace('{symbol', '{"symbol"')
+    jstr = json.dumps(text)
+
+    js = json.loads(jstr)
+    df = pd.DataFrame(pd.read_json(js, dtype={'code':object}),
+                      columns=DAY_TRADING_COLUMNS)
+    df = df.drop('symbol', axis=1)
+#     df = df.ix[df.volume > 0]
+    return df
+
+def get_vip_sina_stock_code():
+    df = _parsing_dayprice_json('hs_a', 1)
+    if df is not None:
+        for i in range(2, 60):
+            newdf = _parsing_dayprice_json('hs_a', i)
+            df = df.append(newdf, ignore_index=True)
+    df = df.append(_parsing_dayprice_json('shfxjs', 1),
+                                               ignore_index=True)
+    return df
 
 def date2long(date):
     tmp = date.split('-')
@@ -162,6 +203,8 @@ def get_sina_fuquan_price(code, type = 'qianfuquan', retry_count=3,  timeout = 1
         except ValueError as e:
             print(url)
             print(e)
+            return None
+        except Exception as e:
             return None
         else:
             break

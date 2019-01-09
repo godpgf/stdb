@@ -18,10 +18,10 @@ class LocalDataSource(object):
         right = self._trading_dates.searchsorted(end_date, side='right')
         return self._trading_dates[left:right]
 
-    def insert_current_2_history(self, history_data, order_book_id, price_scale, trading_calender_int=None):
+    def insert_current_2_history(self, history_data, order_book_id, price_scale, trading_calender_int=None, is_real_time=False):
         if history_data is not None and len(history_data) > 0:
             fill_data = []
-            cur_data = get_current_data(order_book_id)
+            cur_data = get_current_data(order_book_id) if is_real_time else None
             if cur_data and cur_data[0] > history_data[0][0]:
                 cur_data = (cur_data[0],cur_data[1] * price_scale,cur_data[2] * price_scale,cur_data[3]*price_scale,cur_data[4]*price_scale,cur_data[5],0)
             else:
@@ -64,7 +64,7 @@ class LocalDataSource(object):
 
         return history_data
 
-    def get_all_bars(self, order_book_id, trading_calender_int=None, min_date='19910403'):
+    def get_all_bars(self, order_book_id, trading_calender_int=None, min_date='19910403', is_real_time=False):
         if len(order_book_id) == 6 or len(order_book_id) == 8:
             history_data = get_163_data(order_book_id, trading_calender_int, min_date=min_date)
             #将价格变成复权价
@@ -90,7 +90,7 @@ class LocalDataSource(object):
                 history_data.reverse()
             if history_data is None:
                 return None
-            history_data = self.insert_current_2_history(history_data, order_book_id, scale, trading_calender_int)
+            history_data = self.insert_current_2_history(history_data, order_book_id, scale, trading_calender_int, is_real_time)
         else:
             #history_data = get_ts_history_data(order_book_id)
             #cur_data = get_ts_current_data(order_book_id)

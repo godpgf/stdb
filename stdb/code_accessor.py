@@ -35,7 +35,13 @@ class LocalCodeProxy(CodeProxy):
                 #self._cache = np.fromfile(path, np.dtype('|S7'))
                 self._cache = pd.read_csv(path, dtype=str)
             else:
-                codes, price= get_163_stock_code()
+                # codes, price= get_163_stock_code()
+                code_table = get_vip_sina_stock_code()
+
+                # code_table['code'] = code_table['code'].apply(lambda v:v[2:])
+                codes = code_table['code'].values
+                price = code_table['trade'].values
+
                 industry = get_industry()
                 industry_list = []
                 market_list = []

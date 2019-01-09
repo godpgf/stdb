@@ -105,7 +105,7 @@ class StockData(object):
         self.earning_ratios = earning_ratios
 
 
-def download_stock_data(cache_path = "data", is_offline = False, min_date = "2012-01-01"):
+def download_stock_data(cache_path="data", is_offline=False, min_date="2012-01-01", is_real_time=False):
     codeProxy = LocalCodeProxy(cache_path, is_offline)
     codes = codeProxy.get_codes()
     dataProxy = LocalDataProxy(cache_path, is_offline, min_date)
@@ -120,7 +120,7 @@ def download_stock_data(cache_path = "data", is_offline = False, min_date = "201
     days = []
 
     for index, row in codes.iterrows():
-        data = dataProxy.get_all_data(row["code"])
+        data = dataProxy.get_all_data(row["code"], is_real_time)
         if data is not None and len(data) > 0:
             code_list.append(row["code"])
             price.append(row["price"])
@@ -150,7 +150,7 @@ def download_stock_data(cache_path = "data", is_offline = False, min_date = "201
         market.append(None)
         industry.append(key)
         days.append(len(data["date"]))
-        df.to_csv("%s/%s.csv"%(cache_path,key),index=False)
+        df.to_csv("%s/%s.csv" % (cache_path, key), index=False)
 
     for market_code in markey_set:
         data = dataProxy.get_all_data(market_code)
@@ -164,11 +164,11 @@ def download_stock_data(cache_path = "data", is_offline = False, min_date = "201
                   "price": np.array(price),
                   "market": np.array(market),
                   "industry": np.array(industry),
-                  "days":np.array(days)},
+                  "days": np.array(days)},
                  columns=["code", "market", "industry", "price", "days"]).to_csv('%s/%s.csv' % (cache_path, 'codes'), index=False)
 
 
-def refresh_stock_data(cache_path = "data"):
+def refresh_stock_data(cache_path="data"):
     codeProxy = LocalCodeProxy(cache_path)
     codes = codeProxy.get_codes()
     dataProxy = LocalDataProxy(cache_path)

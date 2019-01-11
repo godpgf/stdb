@@ -119,7 +119,11 @@ def download_stock_data(cache_path="data", is_offline=False, min_date="2012-01-0
     industry = []
     days = []
 
+    code_set = set()
     for index, row in codes.iterrows():
+        if row["code"] in code_set:
+            continue
+        code_set.add(row["code"])
         data = dataProxy.get_all_data(row["code"], is_real_time)
         if data is not None and len(data) > 0:
             code_list.append(row["code"])

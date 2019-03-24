@@ -46,6 +46,8 @@ class LocalCodeProxy(CodeProxy):
                 industry_list = []
                 market_list = []
                 for code in codes:
+                    if code[0] == '9':
+                        continue
                     if code in industry:
                         industry_list.append(industry[code])
                     else:

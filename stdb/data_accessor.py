@@ -73,7 +73,7 @@ class LocalDataProxy(DataProxy):
     :param str cache_path:缓存地址
     :param is_offline:是否离线
     """
-    def __init__(self, cache_path=None, is_offline=False, min_date = "1995-04-24"):
+    def __init__(self, cache_path=None, is_offline=False, min_date="1995-04-24"):
         self._cache_path = cache_path
         self._is_offline = False if cache_path is None else is_offline
         self._cache = {}
@@ -91,7 +91,6 @@ class LocalDataProxy(DataProxy):
             [int(t.strftime("%Y%m%d000000")) for t in self.trading_calendar], dtype="<u8")
         self.trading_calender_int = trading_calender_int[
             trading_calender_int <= convert_date_to_int(datetime.date.today())]
-
 
     def update_current_data(self, order_book_id):
         assert not self._is_offline and self._cache_path
@@ -120,7 +119,6 @@ class LocalDataProxy(DataProxy):
                               columns=["date", "open", "high", "low", "close", "volume",
                                        "turn"])
             df.to_csv(path, index=False)
-
 
     def get_all_data(self, order_book_id, is_real_time=False):
         try:
@@ -163,6 +161,45 @@ class LocalDataProxy(DataProxy):
             self._cache[order_book_id] = bars
 
         return bars
+
+    @classmethod
+    def merge_data(cls, bars, days=5):
+        reversed_bar = bars[::-1]
+        date = []
+        open = []
+        high = []
+        low = []
+        close = []
+        volume = []
+        turn = []
+        for i in range(0, len(reversed_bar), days):
+            date.append(reversed_bar["date"][i])
+            open.append(reversed_bar["open"][i])
+            h = reversed_bar["high"][i]
+            l = reversed_bar["low"][i]
+            v = reversed_bar["volume"][i]
+            t = reversed_bar["turn"][i]
+            for j in range(1, days):
+                h = max(h, reversed_bar["high"][i + j])
+                l = min(l, reversed_bar["low"][i + j])
+                v += reversed_bar["volume"][i + j]
+                t += reversed_bar["turn"][i + j]
+            high.append(h)
+            low.append(l)
+            close.append(reversed_bar["close"][i + days - 1])
+            volume.append(v)
+            turn.append(t / days)
+        data = np.array([date, open, high, low, close,
+                         volume, turn]).T
+        data = [tuple(d.tolist()) for d in data]
+
+        stocktype = np.dtype([
+            ('date', 'uint64'), ('open', 'float64'),
+            ('high', 'float64'), ('low', 'float64'),
+            ('close', 'float64'), ('volume', 'float64'),
+            ('turn', 'float64')
+        ])
+        return np.array(data, dtype=stocktype)[::-1]
 
     def get_trading_days(self, order_book_id):
         try:

@@ -172,7 +172,7 @@ class LocalDataProxy(DataProxy):
         close = []
         volume = []
         turn = []
-        for i in range(0, len(reversed_bar), days):
+        for i in range(0, len(reversed_bar) - days, days):
             date.append(reversed_bar["date"][i])
             open.append(reversed_bar["open"][i])
             h = reversed_bar["high"][i]

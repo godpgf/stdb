@@ -76,89 +76,105 @@ class LocalDataProxy(DataProxy):
     def __init__(self, cache_path=None, is_offline=False, min_date="1995-04-24"):
         self._cache_path = cache_path
         self._is_offline = False if cache_path is None else is_offline
-        self._cache = {}
+        # 缓存对齐后的bar数据
+        self._cache_alignment = {}
+        # 缓存原始bar数据
+        self._cache_source = {}
         self._trading_days = {}
         self._data_source = LocalDataSource()
-        self.trading_calender_int = None
         self.min_date = min_date
-        market_data = self.get_all_data('sh000001')
+        self.trading_calender = None
+        self.load_market()
+
+    def load_market(self, is_real_time=False):
+        self.trading_calender = None
+        market_data = self.get_all_data('sh000001', is_real_time)
         if market_data is None:
             return
         market_data = market_data[np.where(market_data['volume'] > 0)]
         self._data_source.init_trading_dates(market_data['date'])
-        self.trading_calendar = self.get_trading_dates(min_date, datetime.date.today())
+        trading_calendar = self.get_trading_dates(self.min_date, datetime.date.today())
         trading_calender_int = np.array(
-            [int(t.strftime("%Y%m%d000000")) for t in self.trading_calendar], dtype="<u8")
-        self.trading_calender_int = trading_calender_int[
+            [int(t.strftime("%Y%m%d")) for t in trading_calendar], dtype="<u8")
+        self.trading_calender = trading_calender_int[
             trading_calender_int <= convert_date_to_int(datetime.date.today())]
 
-    def update_current_data(self, order_book_id):
-        assert not self._is_offline and self._cache_path
-        cache_path = self._cache_path[order_book_id] if isinstance(self._cache_path, dict) else self._cache_path
-        path = '%s/%s.csv' % (cache_path, order_book_id)
-
-        if os.path.exists(path) is False:
-            return False
+    def _load_bars(self, path):
         df = pd.read_csv(path)
-        data = np.array(
-            [df['date'].values / 1000000, df['open'].values * 1000, df['high'].values * 1000, df['low'].values * 1000, df['close'].values * 1000,
-            df['volume'].values , df['turn'].values * 100 * 10000]).T
-        data = data.astype(int)
+
+        data = np.array([df['date'].values, df['open'].values, df['high'].values, df['low'].values, df['close'].values,
+                         df['price'].values,
+                         df['volume'].values]).T
         data = [tuple(d.tolist()) for d in data]
-        data.reverse()
-        self._data_source.insert_current_2_history(data,order_book_id,self.trading_calender_int, True)
-        bars = self._data_source.history_2_bars(data)
-        if bars is None:
-            return None
-        if cache_path:
-            if os.path.exists(cache_path) is False:
-                os.makedirs(cache_path)
-            df = pd.DataFrame({"date": bars["date"], "open": bars["open"], "high": bars["high"], "low": bars["low"],
-                               "close": bars["close"], "volume": bars["volume"],
-                               "turn": bars["turn"]},
-                              columns=["date", "open", "high", "low", "close", "volume",
-                                       "turn"])
-            df.to_csv(path, index=False)
+
+        stocktype = np.dtype([
+            ('date', 'uint64'), ('open', 'float64'),
+            ('high', 'float64'), ('low', 'float64'),
+            ('close', 'float64'), ('price', 'float64'),
+            ('volume', 'uint64')
+        ])
+        bars = np.array(data, dtype=stocktype)
+        return bars
 
     def get_all_data(self, order_book_id, is_real_time=False):
-        try:
-            bars = self._cache[order_book_id]
-        except KeyError:
+        if order_book_id in self._cache_alignment and not is_real_time:
+            bars = self._cache_alignment[order_book_id]
+        else:
             cache_path = self._cache_path[order_book_id] if isinstance(self._cache_path, dict) else self._cache_path
             path = '%s/%s.csv' % (cache_path, order_book_id)
+
+            # if order_book_id in self._data_source:
+            #     bars = self._cache_source[order_book_id]
+            # else:
+            #     if os.path.exists(path) is False or self.trading_calender is None:
+            #         bars = self._data_source.get_all_bars(order_book_id, self.trading_calender,
+            #                                               min_date=self.min_date.replace('-', ''),
+            #                                               is_real_time=is_real_time)
+            #     else:
+            #         bars = self._load_bars(path)
+            #         if not self._is_offline:
+            #             bars = self._data_source.insert_near_2_bar(bars, order_book_id, self.trading_calender)
+
+
+
             if self._is_offline:
-                if os.path.exists(path) is False:
-                    return None
-                df = pd.read_csv(path)
-
-                data = np.array([df['date'].values,df['open'].values,df['high'].values,df['low'].values,df['close'].values,
-                                  df['volume'].values,df['turn'].values]).T
-                data = [tuple(d.tolist()) for d in data]
-
-                stocktype = np.dtype([
-                    ('date', 'uint64'), ('open', 'float64'),
-                    ('high', 'float64'), ('low', 'float64'),
-                    ('close', 'float64'), ('volume', 'float64'),
-                    ('turn', 'float64')
-                ])
-                bars = np.array(data, dtype=stocktype)
+                # 离线数据，除了实时更新，不会读取任何网络数据
+                if order_book_id in self._cache_source:
+                    bars = self._cache_source[order_book_id]
+                else:
+                    if os.path.exists(path) is False:
+                        return None
+                    bars = self._load_bars(path)
+                    self._cache_source[order_book_id] = bars
             else:
-                bars = self._data_source.get_all_bars(order_book_id, self.trading_calender_int, min_date=self.min_date.replace('-',''), is_real_time=is_real_time)
-                if bars is None:
-                    return None
-                if cache_path:
-                    if os.path.exists(cache_path) is False:
-                        os.makedirs(cache_path)
-                    df = pd.DataFrame({"date":bars["date"],"open":bars["open"],"high":bars["high"],"low":bars["low"],"close":bars["close"],"volume":bars["volume"],
-                                       "turn":bars["turn"]},
-                                      columns=["date","open","high","low","close","volume","turn"])
-                    df.to_csv(path, index=False)
+                # 在线数据，如果本地有，优先读取本地的
+                if order_book_id in self._cache_source:
+                    bars = self._cache_source[order_book_id]
+                else:
+                    if os.path.exists(path) is False or self.trading_calender is None:
+                        bars = self._data_source.get_all_bars(order_book_id, self.trading_calender, min_date=self.min_date.replace('-',''), is_real_time=is_real_time)
+                    else:
+                        bars = self._load_bars(path)
+                        bars = self._data_source.insert_near_2_bar(bars, order_book_id, self.trading_calender)
+                    if bars is None:
+                        return None
+                    self._cache_source[order_book_id] = bars
 
-            min_date_int = date2long(self.min_date)*1000000
+                    if cache_path:
+                        if os.path.exists(cache_path) is False:
+                            os.makedirs(cache_path)
+                        df = pd.DataFrame({"date":bars["date"],"open":bars["open"],"high":bars["high"],"low":bars["low"],"close":bars["close"],"price":bars["price"],"volume":bars["volume"]},
+                                          columns=["date","open","high","low","close","price","volume"])
+                        df.to_csv(path, index=False)
+
+            if is_real_time:
+                bars = self._data_source.insert_current_2_bar(bars, order_book_id, self.trading_calender)
+
+            min_date_int = date2long(self.min_date)
             self._trading_days[order_book_id] = len(bars['date'])
             bars = bars[np.where(bars['date'] >= min_date_int)]
             bars = self._fill_all_bars(bars)
-            self._cache[order_book_id] = bars
+            self._cache_alignment[order_book_id] = bars
 
         return bars
 
@@ -170,34 +186,33 @@ class LocalDataProxy(DataProxy):
         high = []
         low = []
         close = []
+        price = []
         volume = []
-        turn = []
+
         for i in range(0, len(reversed_bar) - days, days):
             date.append(reversed_bar["date"][i])
             open.append(reversed_bar["open"][i])
             h = reversed_bar["high"][i]
             l = reversed_bar["low"][i]
             v = reversed_bar["volume"][i]
-            t = reversed_bar["turn"][i]
             for j in range(1, days):
                 h = max(h, reversed_bar["high"][i + j])
                 l = min(l, reversed_bar["low"][i + j])
                 v += reversed_bar["volume"][i + j]
-                t += reversed_bar["turn"][i + j]
             high.append(h)
             low.append(l)
             close.append(reversed_bar["close"][i + days - 1])
+            price.append(reversed_bar["price"][i + days - 1])
             volume.append(v)
-            turn.append(t / days)
         data = np.array([date, open, high, low, close,
-                         volume, turn]).T
+                         price, volume]).T
         data = [tuple(d.tolist()) for d in data]
 
         stocktype = np.dtype([
             ('date', 'uint64'), ('open', 'float64'),
             ('high', 'float64'), ('low', 'float64'),
-            ('close', 'float64'), ('volume', 'float64'),
-            ('turn', 'float64')
+            ('close', 'float64'), ('price', 'float64'),
+            ('volume', 'uint64')
         ])
         return np.array(data, dtype=stocktype)[::-1]
 
@@ -218,10 +233,9 @@ class LocalDataProxy(DataProxy):
             day = int(date - year * 10000 - month * 100)
             return '%s-%s-%s'%('%d'%year,_2str(month),_2str(day))
         date_col = bars["date"]
-        index = [pd.Timestamp(int2date(data / 1000000)) for data in date_col]
-        data = [[bars["open"][i],bars["high"][i],bars["low"][i],bars["close"][i],bars["volume"][i],bars['turn'][i]] for i in range(len(index))]
-        return pd.DataFrame(np.array(data),index,columns=["Open","High","Low","Close","Volume",'Turn'])
-
+        index = [pd.Timestamp(int2date(date)) for date in date_col]
+        data = [[bars["open"][i],bars["high"][i],bars["low"][i],bars["close"][i],bars["price"][i],bars['volume'][i]] for i in range(len(index))]
+        return pd.DataFrame(np.array(data),index,columns=["Open","High","Low","Close","Price",'Volume'])
 
     def get_bar(self, order_book_id, dt):
         bars = self.get_all_data(order_book_id)
@@ -277,9 +291,9 @@ class LocalDataProxy(DataProxy):
         return self._data_source.get_trading_dates(start_date, end_date)
 
     def _fill_all_bars(self, bars):
-        if self.trading_calender_int is None:
+        if self.trading_calender is None:
             return bars
-        trading_calender_int = self.trading_calender_int
+        trading_calender_int = self.trading_calender
 
         # prepend
         start_index = trading_calender_int.searchsorted(bars[0]["date"])
@@ -291,6 +305,7 @@ class LocalDataProxy(DataProxy):
         prepend_bars["close"].fill(bars[0]["open"])
         prepend_bars["high"].fill(bars[0]["open"])
         prepend_bars["low"].fill(bars[0]["open"])
+        prepend_bars["price"].fill(bars[0]["open"])
 
         # midpend
         last_index = trading_calender_int.searchsorted(bars[-1]["date"])
@@ -303,7 +318,7 @@ class LocalDataProxy(DataProxy):
                 midpend_bars[i] = bars[bars_index]
                 bars_index += 1
             else:
-                data = (midpend_date[i], bars[bars_index - 1]["close"], bars[bars_index - 1]["close"], bars[bars_index - 1]["close"], bars[bars_index - 1]["close"], 0, 0)
+                data = (midpend_date[i], bars[bars_index - 1]["close"], bars[bars_index - 1]["close"], bars[bars_index - 1]["close"], bars[bars_index - 1]["close"], bars[bars_index - 1]["close"], 0)
                 midpend_bars[i] = data
 
         # append
@@ -315,6 +330,7 @@ class LocalDataProxy(DataProxy):
         append_bars["close"].fill(bars[-1]["close"])
         append_bars["high"].fill(bars[-1]["close"])
         append_bars["low"].fill(bars[-1]["close"])
+        append_bars["price"].fill(bars[-1]["close"])
 
         # fill bars
         new_bars = np.concatenate([prepend_bars, midpend_bars, append_bars])

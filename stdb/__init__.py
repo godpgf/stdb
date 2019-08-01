@@ -89,8 +89,8 @@ def cal_market_data(stock_list):
     stocktype = np.dtype([
         ('date', 'uint64'), ('open', 'float64'),
         ('high', 'float64'), ('low', 'float64'),
-        ('close', 'float64'), ('volume', 'float64'),
-        ('turn', 'float64')
+        ('close', 'float64'), ('price', 'float64'),
+        ('volume', 'uint64')
     ])
     history_data = [(date[i], open[i], high[i], low[i], close[i], volume[i], 0) for i in range(len(date))]
     return np.array(history_data, dtype=stocktype)
@@ -171,18 +171,6 @@ def download_stock_data(cache_path="data", is_offline=False, min_date="2012-01-0
                   "days": np.array(days)},
                  columns=["code", "market", "industry", "price", "days"]).to_csv('%s/%s.csv' % (cache_path, 'codes'), index=False)
 
-
-def refresh_stock_data(cache_path="data"):
-    codeProxy = LocalCodeProxy(cache_path)
-    codes = codeProxy.get_codes()
-    dataProxy = LocalDataProxy(cache_path)
-    markey_set = set()
-    for index, row in codes.iterrows():
-        dataProxy.update_current_data(row["code"])
-        markey_set.add(row["market"])
-    for market_code in markey_set:
-        dataProxy.get_all_data(market_code)
-    download_stock_data(cache_path, is_offline=True)
 
 def download_industry(code_list, market_code, path, min_date="2005-09-01"):
     if not os.path.exists(path):

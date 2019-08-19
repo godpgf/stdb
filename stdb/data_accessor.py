@@ -191,7 +191,7 @@ class LocalDataProxy(DataProxy):
 
         for i in range(0, len(reversed_bar) - days, days):
             date.append(reversed_bar["date"][i])
-            open.append(reversed_bar["open"][i])
+            open.append(reversed_bar["open"][i + days - 1])
             h = reversed_bar["high"][i]
             l = reversed_bar["low"][i]
             v = reversed_bar["volume"][i]
@@ -201,8 +201,8 @@ class LocalDataProxy(DataProxy):
                 v += reversed_bar["volume"][i + j]
             high.append(h)
             low.append(l)
-            close.append(reversed_bar["close"][i + days - 1])
-            price.append(reversed_bar["price"][i + days - 1])
+            close.append(reversed_bar["close"][i])
+            price.append(reversed_bar["price"][i])
             volume.append(v)
         data = np.array([date, open, high, low, close,
                          price, volume]).T

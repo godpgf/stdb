@@ -55,6 +55,8 @@ def _parsing_dayprice_json(types=None, page=1):
     text = reg.sub(r',"\1":', text.decode('gbk'))
     text = text.replace('"{symbol', '{"symbol')
     text = text.replace('{symbol', '{"symbol"')
+    text = text.replace('"{', '{')
+    text = text.replace('""', '"')
     jstr = json.dumps(text)
 
     js = json.loads(jstr)

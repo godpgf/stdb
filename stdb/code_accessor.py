@@ -42,31 +42,32 @@ class LocalCodeProxy(CodeProxy):
                 codes = code_table['code'].values
                 price = code_table['trade'].values
 
-                industry = get_industry()
-                industry_list = []
-                market_list = []
-                code_list = []
-                price_list = []
-                for id, code in enumerate(codes):
-                    if code[0] == '9':
-                        continue
-                    code_list.append(code)
-                    price_list.append(price[id])
-                    if code in industry:
-                        industry_list.append(industry[code])
-                    else:
-                        industry_list.append("other")
-                    if market_code is None:
-                        if code[0:2] == '60':
-                            market_list.append('sh000001')
-                        else:
-                            market_list.append('sz399001')
-                    else:
-                        market_list.append(market_code)
-                self._cache = pd.DataFrame({"code": np.array(code_list),
-                                            "price": np.array(price_list),
-                                            "market": np.array(market_list),
-                                            "industry": np.array(industry_list)}, columns=["code","market","industry","price","cap","pe"])
+                # industry = get_industry()
+                # industry_list = []
+                # market_list = []
+                # code_list = []
+                # price_list = []
+                # for id, code in enumerate(codes):
+                #     if code[0] == '9':
+                #         continue
+                #     code_list.append(code)
+                #     price_list.append(price[id])
+                #     if code in industry:
+                #         industry_list.append(industry[code])
+                #     else:
+                #         industry_list.append("other")
+                #     if market_code is None:
+                #         if code[0:2] == '60':
+                #             market_list.append('sh000001')
+                #         else:
+                #             market_list.append('sz399001')
+                #     else:
+                #         market_list.append(market_code)
+                # self._cache = pd.DataFrame({"code": np.array(code_list),
+                #                             "price": np.array(price_list),
+                #                             "market": np.array(market_list),
+                #                             "industry": np.array(industry_list)}, columns=["code","market","industry","price","cap","pe"])
+                self._cache = pd.DataFrame({"code": codes, "price": price})
                 if self._cache_path is not None:
                     if os.path.exists(self._cache_path) is False:
                         os.makedirs(self._cache_path)
